@@ -3,28 +3,33 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Field extends Model
 {
+    use HasFactory;
+
     protected $primaryKey = 'fieldId';
 
-    protected $fillable = [
-        'locationId', 'sportId', 'name', 'description'
-    ];
+    protected $fillable = ['locationId', 'sportId', 'name', 'description'];
 
-    public function location() {
+    public function location()
+    {
         return $this->belongsTo(Location::class, 'locationId');
     }
 
-    public function sport() {
+    public function sport()
+    {
         return $this->belongsTo(Sport::class, 'sportId');
     }
 
-    public function times() {
+    public function times()
+    {
         return $this->hasMany(Time::class, 'fieldId');
     }
 
-    public function reservationDetails() {
+    public function reservationDetails()
+    {
         return $this->hasMany(ReservationDetail::class, 'fieldId');
     }
 }

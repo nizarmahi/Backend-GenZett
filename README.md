@@ -12,7 +12,7 @@ Ini adalah bagian backend untuk sistem reservasi lapangan olahraga yang dikemban
 ### **1. Clone Repository**  
 Pertama, clone repository ke komputer lokal:  
 ```bash
-git clone https://github.com/Alhamdanaaa/Backend-GenZett.git
+git clone https://github.com/nizarmahi/Backend-GenZett.git
 cd Backend-GenZett
 ```
 

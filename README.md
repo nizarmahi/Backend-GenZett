@@ -1,113 +1,97 @@
 
-# **Backend-GenZett**  
-# **Sport Center Reservation - Backend**  
+# 🏟️ Backend-GenZett
+**Sistem Reservasi Lapangan Olahraga – Backend (Laravel)**
 
-## **Deskripsi Proyek**  
-Ini adalah bagian backend untuk sistem reservasi lapangan olahraga yang dikembangkan menggunakan **Laravel**. Backend ini berfungsi sebagai RESTful API yang menyediakan data untuk frontend (dibuat dengan Next.js) dan mengelola proses autentikasi, manajemen user, lapangan, jadwal, dan reservasi.
+## 📄 Deskripsi Proyek
+Ini adalah backend dari sistem reservasi lapangan olahraga yang dibangun dengan Laravel. Proyek ini menyediakan **RESTful API** untuk frontend (dibuat dengan Next.js) dan menangani fitur seperti:
+- Autentikasi user
+- Manajemen lapangan
+- Jadwal dan reservasi
+- Hak akses berdasarkan level pengguna
 
----
+## 🚀 Cara Menjalankan Proyek
 
-## **Cara Menjalankan Proyek**  
-
-### **1. Clone Repository**  
-Pertama, clone repository ke komputer lokal:  
+### 1. Clone Repository
 ```bash
 git clone https://github.com/nizarmahi/Backend-GenZett.git
 cd Backend-GenZett
 ```
 
-### **2. Install Dependencies**  
-Jalankan perintah berikut untuk menginstal semua package Laravel:  
+### 2. Install Dependencies
 ```bash
 composer install
 ```
 
-### **3. Setup Environment**  
-Salin file `.env.example` menjadi `.env` lalu atur konfigurasi sesuai kebutuhan:
+### 3. Setup Environment
 ```bash
 cp .env.example .env
 ```
+Lalu edit `.env`:
+- DB_DATABASE, DB_USERNAME, DB_PASSWORD → sesuaikan dengan database lokal
+- SANCTUM_STATEFUL_DOMAINS=http://localhost:3000 (untuk frontend)
+- APP_URL=http://localhost:8000
 
-Edit `.env`:
-- Atur `DB_DATABASE`, `DB_USERNAME`, dan `DB_PASSWORD`
-- Jika menggunakan frontend lokal, atur `SANCTUM_STATEFUL_DOMAINS=http://localhost:3000`
-- Atur `APP_URL=http://localhost:8000`
-
-### **4. Generate Key dan Migrasi Database**  
+### 4. Generate Key & Migrasi Database
 ```bash
 php artisan key:generate
 php artisan migrate
 ```
 
-### **5. Jalankan Server Laravel**  
+### 5. Jalankan Server
 ```bash
 php artisan serve
 ```
-API akan tersedia di [http://localhost:8000](http://localhost:8000), dan semua endpoint tersedia di `routes/api.php`.
+API aktif di: `http://localhost:8000`  
+Cek endpoint di: `routes/api.php`
 
----
+## 🧩 Fitur Utama
+- 🔐 Autentikasi (Sanctum): Login, Register, Logout
+- 👤 CRUD untuk: User, Field, Reservation, Sport
+- 🌐 CORS Support
+- ✅ Validasi & Response JSON terstandarisasi
 
-## **Fitur Utama API**  
-- Autentikasi dengan Sanctum (Login, Register, Logout)
-- CRUD untuk User, Field, Reservation, dan Sport
-- CORS support agar dapat diakses dari frontend
-- Validasi dan response JSON standard
+## 🔁 Git Workflow & Branching
 
----
+### 6. Setup Git
+```bash
+git config --global user.name "Your Name"
+git config --global user.email "your-email@example.com"
+```
 
-## **Pengaturan Git & Branching**  
+### 7. Checkout ke `development`
+```bash
+git checkout development
+git pull origin development
+```
 
-### **6. Setup Git & Membuat Branch Baru**  
-1. Pastikan sudah mengatur Git:  
-   ```bash
-   git config --global user.name "Your Name"
-   git config --global user.email "your-email@example.com"
-   ```
+### 8. Buat Branch Fitur Baru
+```bash
+git checkout -b fitur-nama-fitur
+git push origin fitur-nama-fitur
+```
 
-2. Checkout branch `development`:  
-   ```bash
-   git checkout development
-   git pull origin development
-   ```
-
-3. Buat branch baru berdasarkan `development`:  
-   ```bash
-   git checkout -b fitur-nama-fitur
-   git push origin fitur-nama-fitur
-   ```
-
----
-
-## **Penggunaan Git Workflow**  
-
-### **7. Commit dan Push Perubahan**  
+### 9. Commit & Push
 ```bash
 git add .
 git commit -m "Menambahkan fitur X"
 git push origin fitur-nama-fitur
 ```
 
-### **8. Pull Request dan Merge**  
-1. Buat pull request dari GitHub ke branch `development`  
-2. Pastikan deskripsi pull request menjelaskan perubahan  
-3. Setelah direview dan tidak ada konflik, merge ke `development`  
-4. Untuk rilis, branch `development` akan digabungkan ke `main`
+### 10. Pull Request & Merge
+- Buat PR dari `fitur-nama-fitur` → `development`
+- Sertakan deskripsi jelas
+- Setelah review & tidak ada konflik, merge ke `development`
+- Untuk **rilis**, merge `development` → `main`
 
----
-
-## **Kolaborasi Tim**  
-
-- Selalu **pull perubahan terbaru** sebelum memulai pekerjaan  
+## 👥 Kolaborasi Tim
+- Selalu **pull perubahan terbaru** sebelum mulai kerja:
   ```bash
   git pull origin development
   ```
-- Gunakan **nama branch yang jelas** dan sesuai fitur yang dikerjakan  
+- Gunakan penamaan branch yang deskriptif dan sesuai fitur
+- Jaga commit tetap bersih & ringkas
 
----
-
-## **Dokumentasi & Sumber Daya**  
-- **[Laravel Documentation](https://laravel.com/docs)**  
-- **[Laravel Sanctum](https://laravel.com/docs/sanctum)**  
-- **[MySQL Documentation](https://dev.mysql.com/doc/)**  
-
----
+## 📚 Referensi
+- [Laravel Documentation](https://laravel.com/docs)
+- [Laravel Sanctum](https://laravel.com/docs/10.x/sanctum)
+- [MySQL Documentation](https://dev.mysql.com/doc/)

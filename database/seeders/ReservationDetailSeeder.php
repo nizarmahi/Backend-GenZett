@@ -8,11 +8,22 @@ use Carbon\Carbon;
 
 class ReservationDetailSeeder extends Seeder
 {
-    public function run()
+    public function run(): void
     {
-        DB::table('reservation_details')->insert([
-            ['detailId' => 1, 'reservationId' => 1, 'fieldId' => 1, 'timeId' => 1, 'date' => Carbon::now(), 'created_at' => Carbon::now(), 'updated_at' => Carbon::now()],
-            ['detailId' => 2, 'reservationId' => 2, 'fieldId' => 2, 'timeId' => 2, 'date' => Carbon::now(), 'created_at' => Carbon::now(), 'updated_at' => Carbon::now()],
-        ]);
+        $details = [
+            ['reservationId' => 1, 'fieldId' => 1, 'timeId' => 1, 'date' => '2025-04-20'],
+            ['reservationId' => 2, 'fieldId' => 2, 'timeId' => 2, 'date' => '2025-04-21'],
+            ['reservationId' => 3, 'fieldId' => 3, 'timeId' => 3, 'date' => '2025-04-22'],
+            ['reservationId' => 4, 'fieldId' => 4, 'timeId' => 4, 'date' => '2025-04-23'],
+            ['reservationId' => 5, 'fieldId' => 5, 'timeId' => 5, 'date' => '2025-04-24'],
+        ];
+
+        foreach ($details as $detail) {
+            DB::table('reservation_details')->insert([
+                ...$detail,
+                'created_at' => now(),
+            ]);
+        }
     }
+
 }

@@ -8,11 +8,21 @@ use Carbon\Carbon;
 
 class LocationSeeder extends Seeder
 {
-    public function run()
+    public function run(): void
     {
-        DB::table('locations')->insert([
-            ['locationId' => 1, 'locationName' => 'Lapangan A', 'description' => 'Lapangan indoor dengan fasilitas lengkap', 'locationPath' => 'images/lapangan_a.jpg', 'created_at' => Carbon::now(), 'updated_at' => Carbon::now()],
-            ['locationId' => 2, 'locationName' => 'Lapangan B', 'description' => 'Lapangan outdoor dengan rumput sintetis', 'locationPath' => 'images/lapangan_b.jpg', 'created_at' => Carbon::now(), 'updated_at' => Carbon::now()],
-        ]);
+        $locations = [
+            ['locationName' => 'Lapangan A', 'description' => 'Lokasi pusat kota', 'locationPath' => 'lokasi1.jpg'],
+            ['locationName' => 'Lapangan B', 'description' => 'Dekat taman', 'locationPath' => 'lokasi2.jpg'],
+            ['locationName' => 'Lapangan C', 'description' => 'Samping kampus', 'locationPath' => 'lokasi3.jpg'],
+            ['locationName' => 'Lapangan D', 'description' => 'Dekat stasiun', 'locationPath' => 'lokasi4.jpg'],
+            ['locationName' => 'Lapangan E', 'description' => 'Daerah pinggiran', 'locationPath' => 'lokasi5.jpg'],
+        ];
+
+        foreach ($locations as $loc) {
+            DB::table('locations')->insert([
+                ...$loc,
+                'created_at' => now(),
+            ]);
+        }
     }
 }

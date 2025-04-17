@@ -11,25 +11,15 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Schema::create('users', function (Blueprint $table) {
-        //     $table->id();
-        //     $table->string('name');
-        //     $table->string('email')->unique();
-        //     $table->timestamp('email_verified_at')->nullable();
-        //     $table->string('password');
-        //     $table->rememberToken();
-        //     $table->timestamps();
-        // });
-
         Schema::create('users', function (Blueprint $table) {
             $table->id('userId');
+            $table->enum('role', ['guest', 'user', 'member', 'admin'])->default('guest'); // dari ERD
             $table->string('username', 16)->unique();
-            $table->string('name');
-            $table->string('email')->unique();
+            $table->string('name', 255);
+            $table->string('email', 255)->unique();
             $table->string('phone', 15)->nullable()->unique();
-            $table->string('password');
-            $table->enum('level', ['Member', 'Admin', 'SuperAdmin'])->nullable();
-            $table->timestamps();
+            $table->string('password', 255); // panjang untuk hash bcrypt
+            $table->timestamp('created_at')->useCurrent();
             $table->rememberToken()->nullable();
         });
 
@@ -41,11 +31,11 @@ return new class extends Migration
 
         Schema::create('sessions', function (Blueprint $table) {
             $table->string('id')->primary();
-            $table->foreignId('user_id')->nullable()->index();
-            $table->string('ip_address', 45)->nullable();
-            $table->text('user_agent')->nullable();
+            $table->foreignId('userId')->nullable()->index();
+            $table->string('ipAddress', 45)->nullable();
+            $table->text('userAgent')->nullable();
             $table->longText('payload');
-            $table->integer('last_activity')->index();
+            $table->integer('lastActivity')->index();
         });
     }
 
@@ -54,8 +44,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('users');
-        Schema::dropIfExists('password_reset_tokens');
         Schema::dropIfExists('sessions');
+        Schema::dropIfExists('password_reset_tokens');
+        Schema::dropIfExists('users');
     }
 };

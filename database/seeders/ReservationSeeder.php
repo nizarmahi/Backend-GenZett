@@ -8,11 +8,22 @@ use Carbon\Carbon;
 
 class ReservationSeeder extends Seeder
 {
-    public function run()
+    public function run(): void
     {
-        DB::table('reservations')->insert([
-            ['reservationId' => 1, 'userId' => 1, 'name' => 'Booking Futsal', 'status' => 'completed', 'paymentStatus' => 'complete', 'total' => 100000, 'remaining' => 0, 'created_at' => Carbon::now(), 'updated_at' => Carbon::now()],
-            ['reservationId' => 2, 'userId' => 2, 'name' => 'Booking Basket', 'status' => 'ongoing', 'paymentStatus' => 'dp', 'total' => 120000, 'remaining' => 120000, 'created_at' => Carbon::now(), 'updated_at' => Carbon::now()],
-        ]);
+        $reservations = [
+            ['userId' => 6, 'status' => 'upcoming', 'name' => 'Booking 1', 'paymentStatus' => 'pending', 'total' => 150000, 'remaining' => 150000],
+            ['userId' => 7, 'status' => 'ongoing', 'name' => 'Booking 2', 'paymentStatus' => 'dp', 'total' => 200000, 'remaining' => 100000],
+            ['userId' => 8, 'status' => 'completed', 'name' => 'Booking 3', 'paymentStatus' => 'complete', 'total' => 250000, 'remaining' => 0],
+            ['userId' => 9, 'status' => 'upcoming', 'name' => 'Booking 4', 'paymentStatus' => 'pending', 'total' => 180000, 'remaining' => 180000],
+            ['userId' => 10, 'status' => 'ongoing', 'name' => 'Booking 5', 'paymentStatus' => 'complete', 'total' => 300000, 'remaining' => 0],
+        ];
+
+        foreach ($reservations as $res) {
+            DB::table('reservations')->insert([
+                ...$res,
+                'created_at' => now(),
+            ]);
+        }
     }
+
 }

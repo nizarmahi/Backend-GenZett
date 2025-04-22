@@ -8,11 +8,22 @@ use Carbon\Carbon;
 
 class PaymentSeeder extends Seeder
 {
-    public function run()
+    public function run(): void
     {
-        DB::table('payments')->insert([
-            ['paymentId' => 1, 'reservationId' => 1, 'invoiceDate' => Carbon::now(), 'totalPaid' => 100000, 'created_at' => Carbon::now(), 'updated_at' => Carbon::now()],
-            ['paymentId' => 2, 'reservationId' => 2, 'invoiceDate' => Carbon::now(), 'totalPaid' => 0, 'created_at' => Carbon::now(), 'updated_at' => Carbon::now()],
-        ]);
+        $payments = [
+            ['reservationId' => 1, 'invoiceDate' => now(), 'totalPaid' => 50000],
+            ['reservationId' => 2, 'invoiceDate' => now(), 'totalPaid' => 100000],
+            ['reservationId' => 3, 'invoiceDate' => now(), 'totalPaid' => 250000],
+            ['reservationId' => 4, 'invoiceDate' => now(), 'totalPaid' => 180000],
+            ['reservationId' => 5, 'invoiceDate' => now(), 'totalPaid' => 300000],
+        ];
+
+        foreach ($payments as $payment) {
+            DB::table('payments')->insert([
+                ...$payment,
+                'created_at' => now(),
+            ]);
+        }
     }
+
 }

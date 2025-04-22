@@ -8,11 +8,22 @@ use Carbon\Carbon;
 
 class SportSeeder extends Seeder
 {
-    public function run()
+    public function run(): void
     {
-        DB::table('sports')->insert([
-            ['sportId' => 1, 'sportName' => 'badminton', 'description' => 'Olahraga futsal 5v5', 'created_at' => Carbon::now(), 'updated_at' => Carbon::now()],
-            ['sportId' => 2, 'sportName' => 'basket', 'description' => 'Olahraga bola basket', 'created_at' => Carbon::now(), 'updated_at' => Carbon::now()],
-        ]);
+        $sports = [
+            ['sportName' => 'Futsal', 'description' => 'Olahraga futsal'],
+            ['sportName' => 'Basket', 'description' => 'Olahraga basket'],
+            ['sportName' => 'Badminton', 'description' => 'Olahraga badminton'],
+            ['sportName' => 'Tennis', 'description' => 'Olahraga tennis'],
+            ['sportName' => 'Voli', 'description' => 'Olahraga volleyball'],
+        ];
+
+        foreach ($sports as $sport) {
+            DB::table('sports')->insert([
+                ...$sport,
+                'created_at' => now(),
+            ]);
+        }
     }
+
 }

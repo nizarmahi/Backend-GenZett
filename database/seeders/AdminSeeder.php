@@ -8,10 +8,22 @@ use Carbon\Carbon;
 
 class AdminSeeder extends Seeder
 {
-    public function run()
+    public function run(): void
     {
-        DB::table('admins')->insert([
-            ['adminId' => 1, 'userId' => 2, 'locationId' => 1, 'created_at' => Carbon::now(), 'updated_at' => Carbon::now()],
-        ]);
+        $admins = [
+            ['userId' => 1, 'locationId' => 1],
+            ['userId' => 2, 'locationId' => 2],
+            ['userId' => 3, 'locationId' => 3],
+            ['userId' => 4, 'locationId' => 4],
+            ['userId' => 5, 'locationId' => 5],
+        ];
+
+        foreach ($admins as $admin) {
+            DB::table('admins')->insert([
+                ...$admin,
+                'created_at' => now(),
+            ]);
+        }
     }
+
 }

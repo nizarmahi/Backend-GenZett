@@ -11,21 +11,21 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('members', function (Blueprint $table) {
-            $table->id('memberId');
-            // $table->foreignId('userId')->constrained('users')->onDelete('cascade');
-            $table->unsignedBigInteger('userId');
-            $table->foreign('userId')->references('userId')->on('users')->onDelete('cascade');
-            $table->dateTime('valid_until')->nullable();
-            $table->timestamps();
+        Schema::create('memberships', function (Blueprint $table) {
+            $table->id('membershipId');
+            $table->unsignedBigInteger('locationId');
+            $table->string('name', 25);
+            $table->text('description')->nullable();
+            $table->integer('price');
+            $table->smallInteger('weeks');
+            $table->timestamp('created_at')->useCurrent();
+
+            $table->foreign('locationId')->references('locationId')->on('locations')->onDelete('cascade');
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
-        Schema::dropIfExists('member');
+        Schema::dropIfExists('memberships');
     }
 };

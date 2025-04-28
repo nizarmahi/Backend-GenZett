@@ -27,6 +27,7 @@ class DatabaseSeeder extends Seeder
             ReservationSeeder::class,
             ReservationDetailSeeder::class,
             PaymentSeeder::class,
+            ReservationMemberSeeder::class,
         ]);
 
         DB::statement('SET FOREIGN_KEY_CHECKS=1;');

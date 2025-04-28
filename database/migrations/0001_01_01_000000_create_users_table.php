@@ -31,11 +31,12 @@ return new class extends Migration
 
         Schema::create('sessions', function (Blueprint $table) {
             $table->string('id')->primary();
-            $table->foreignId('userId')->nullable()->index();
-            $table->string('ipAddress', 45)->nullable();
-            $table->text('userAgent')->nullable();
+            $table->foreignId('user_id')->nullable()->index();
+            $table->foreign('user_id')->references('userId')->on('users')->onDelete('cascade');
+            $table->string('ip_address', 45)->nullable();
+            $table->text('user_agent')->nullable();
             $table->longText('payload');
-            $table->integer('lastActivity')->index();
+            $table->integer('last_activity')->index();
         });
     }
 

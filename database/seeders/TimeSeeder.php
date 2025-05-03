@@ -12,7 +12,7 @@ class TimeSeeder extends Seeder
     {
         $fields = DB::table('fields')->get();
         $startHour = 6;  // 06:00
-        $endHour = 24;   // 24:00
+        $endHour = 23;   // 23:00
 
         $timeId = 1;
 

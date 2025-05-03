@@ -38,6 +38,16 @@ Route::group(['prefix' => 'locations'], function () {
     Route::put('/{id}', [LocationController::class, 'update']);
     Route::delete('/{id}', [LocationController::class, 'destroy']);
 });
+// Field API routes
+Route::group(['prefix' => 'fields'], function () {
+    Route::get('/', [FieldController::class, 'index']);
+    Route::post('/', [FieldController::class, 'store']);
+    Route::get('/sports', [FieldController::class, 'getAllSports']);
+    Route::get('/locations', [FieldController::class, 'getAllLocations']);
+    Route::get('/{id}', [FieldController::class, 'show']);
+    Route::put('/{id}', [FieldController::class, 'update']);
+    Route::delete('/{id}', [FieldController::class, 'destroy']);
+});
 // Route::get('/locations', [LocationController::class, 'index']);
 // Route::get('/locations/{id}', [LocationController::class, 'show']);
 // Route::get('/fields', [FieldController::class, 'index']);

@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('sports', function (Blueprint $table) {
             $table->id('sportId');
-            $table->enum('sportName', ['basket', 'badminton', 'futsal', 'voli', 'tennis'])->nullable();
+            $table->string('sportName')->nullable();
             $table->string('description')->nullable();
             $table->timestamps();
         });

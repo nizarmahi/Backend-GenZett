@@ -1,0 +1,209 @@
+<?php
+
+namespace App\Http\Controllers\API;
+
+use App\Http\Controllers\Controller;
+use App\Models\Field;
+use App\Models\Location;
+use App\Models\Sport;
+use Illuminate\Http\Request;
+
+class FieldController extends Controller
+{
+    public function index(Request $request){
+        $page = (int)$request->input('page', 1);
+        $limit = (int)$request->input('limit', 10);
+        $search = $request->input('search');
+        $sports = $request->input('sports') ? explode('.', $request->input('sports')) : [];
+        $locations = $request->input('locations') ? explode('.', $request->input('locations')) : [];
+
+        // Start query with eager loading of relationships
+        $query = Field::with(['location', 'sport', 'times']);
+
+        // Apply filters
+        if (!empty($sports)) {
+            $query->hasSport($sports);
+        }
+
+        if (!empty($locations)) {
+            $query->hasLocation($locations);
+        }
+
+        if ($search) {
+            $query->search($search);
+        }
+
+        // Get total count
+        $totalFields = $query->count();
+
+        // Calculate offset
+        $offset = ($page - 1) * $limit;
+
+        // Get paginated results
+        $fields = $query->skip($offset)->take($limit)->get();
+
+        // Format the response
+        $formattedFields = $fields->map(function ($field) {
+            // Group sports by each field
+            $sports = $field->sport->sportName;
+
+            return [
+                'id' => $field->fieldId,
+                'name' => $field->name,
+                'location' => $field->location->locationName,
+                'sport' => $sports,
+                'startHour' => $field->times->min('time'),
+                'endHour' => $field->times->max('time'),
+                'desc' => $field->description,
+                'created_at' => $field->created_at,
+                'updated_at' => $field->updated_at,
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'time' => now()->toISOString(),
+            'message' => 'Data lapangan berhasil diambil',
+            'totalFields' => $totalFields,
+            'offset' => $offset,
+            'limit' => $limit,
+            'fields' => $formattedFields
+        ]);
+    }
+    public function show($id)
+    {
+        $field = Field::with(['location', 'sport', 'times'])
+            ->find($id);
+
+        if (!$field) {
+            return response()->json([
+                'success' => false,
+                'message' => "Lapangan dengan ID {$id} tidak ditemukan"
+            ], 404);
+        }
+
+        $formattedField = [
+            'id' => $field->fieldId,
+            'name' => $field->name,
+            'location' => $field->location->locationName,
+            'sport' => $field->sport->sportName,
+            'description' => $field->description,
+            'startHour' => $field->times->min('time'),
+            'endHour' => $field->times->max('time'),
+            'created_at' => $field->created_at,
+            'updated_at' => $field->updated_at,
+        ];
+
+        return response()->json([
+            'success' => true,
+            'time' => now()->toISOString(),
+            'message' => "Lapangan dengan ID {$id} ditemukan",
+            'field' => $formattedField
+        ]);
+    }
+    public function update(Request $request, $id){
+        $field = Field::find($id);
+
+        if (!$field) {
+            return response()->json([
+                'success' => false,
+                'message' => "Lapangan dengan ID {$id} tidak ditemukan"
+            ], 404);
+        }
+
+        $validated = $request->validate([
+            'locationId' => 'required|integer',
+            'sportId' => 'required|integer',
+            'name' => 'required|string|max:255',
+            'startHour' => 'required|string',
+            'endHour' => 'required|string',
+            'description' => 'required|string',
+        ]);
+
+        $field->update($validated);
+
+        return response()->json([
+            'success' => true,
+            'time' => now()->toISOString(),
+            'message' => 'Lapangan berhasil diperbarui',
+            'field' => $field
+        ]);
+    }
+
+    public function destroy($id)
+    {
+        $field = Field::find($id);
+
+        if (!$field) {
+            return response()->json([
+                'success' => false,
+                'message' => "Lapangan dengan ID {$id} tidak ditemukan"
+            ], 404);
+        }
+
+        // Check if there are related reservations before deletion
+        if ($field->reservations()->count() > 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Tidak dapat menghapus lapangan dengan laporan yang ada'
+            ], 409);
+        }
+
+        $field->delete();
+
+        return response()->json([
+            'success' => true,
+            'time' => now()->toISOString(),
+            'message' => 'Lapangan berhasil dihapus'
+        ]);
+    }
+
+    public function store(Request $request){
+        $validated = $request->validate([
+            'locationId' => 'required|integer',
+            'sportId' => 'required|integer',
+            'name' => 'required|string|max:255',
+            'startHour' => 'required|string',
+            'endHour' => 'required|string',
+            'description' => 'required|string',
+        ]);
+
+        $field = Field::create($validated);
+
+        return response()->json([
+            'success' => true,
+            'time' => now()->toISOString(),
+            'message' => 'Lapangan berhasil ditambahkan',
+            'field' => $field
+        ], 201);
+    }
+
+    public function getAllSports()
+    {
+        // Get unique sports from all fields
+        $sports = Sport::select('sportId', 'sportName')
+            ->whereHas('fields')  // Only sports that are used in fields
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'time' => now()->toISOString(),
+            'message' => 'List of all available sports',
+            'sports' => $sports
+        ]);
+    }
+    public function getAllLocations()
+    {
+        // Get unique locations from all fields
+        $locations = Location::select('locationId', 'locationName')
+            ->whereHas('fields')  // Only locations that are used in fields
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'time' => now()->toISOString(),
+            'message' => 'List of all available locations',
+            'locations' => $locations
+        ]);
+    }
+}

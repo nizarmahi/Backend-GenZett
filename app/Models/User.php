@@ -14,7 +14,7 @@ class User extends Authenticatable
     protected $primaryKey = 'userId';
 
     protected $fillable = [
-        'username', 'name', 'email', 'phone', 'password', 'level'
+        'username', 'name', 'email', 'phone', 'password', 'role'
     ];
 
     protected $hidden = [
@@ -29,7 +29,7 @@ class User extends Authenticatable
 
     public function member()
     {
-        return $this->hasOne(Member::class, 'userId');
+        return $this->hasOne(Membership::class, 'userId');
     }
 
     public function admin()

@@ -7,6 +7,7 @@ use App\Http\Controllers\API\LocationController;
 use App\Http\Controllers\API\FieldController;
 use App\Http\Controllers\API\ReservationController;
 use App\Http\Controllers\API\AuthController;
+use App\Http\Controllers\API\OTPController;
 
 /*
 |--------------------------------------------------------------------------
@@ -16,8 +17,16 @@ use App\Http\Controllers\API\AuthController;
 
 
 // Auth Routes
-// Route::post('/register', [AuthController::class, 'register']);
+Route::prefix('users')->group(function () {
+    Route::post('/register', [AuthController::class, 'register']); 
+    Route::get('/', [AuthController::class, 'index']);             
+    Route::get('/{id}', [AuthController::class, 'show']);          
+    Route::put('/{id}', [AuthController::class, 'update']);        
+    Route::delete('/{id}', [AuthController::class, 'destroy']);    
+});
 // Route::post('/login', [AuthController::class, 'login']);
+// Route::post('/register/send-otp', [OTPController::class, 'sendOtp']);
+// Route::post('/register/verify', [OTPController::class, 'verifyOtpAndRegister']);
 
 // Public routes
 // Sport API routes

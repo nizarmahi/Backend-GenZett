@@ -28,4 +28,19 @@ class User extends Authenticatable
         'password',
         'remember_token',
     ];
+
+    public function reservations()
+    {
+        return $this->hasMany(Reservation::class, 'userId');
+    }
+
+    public function member()
+    {
+        return $this->hasOne(Membership::class, 'userId');
+    }
+
+    public function admin()
+    {
+        return $this->hasOne(Admin::class, 'userId');
+    }
 }

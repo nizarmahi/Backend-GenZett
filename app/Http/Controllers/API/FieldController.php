@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Field;
 use App\Models\Location;
 use App\Models\Sport;
+use App\Models\Time;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 
 class FieldController extends Controller
@@ -101,16 +103,9 @@ class FieldController extends Controller
             'field' => $formattedField
         ]);
     }
-    public function update(Request $request, $id){
-        $field = Field::find($id);
-
-        if (!$field) {
-            return response()->json([
-                'success' => false,
-                'message' => "Lapangan dengan ID {$id} tidak ditemukan"
-            ], 404);
-        }
-
+    
+    public function update(Request $request, $id)
+    {
         $validated = $request->validate([
             'locationId' => 'required|integer',
             'sportId' => 'required|integer',
@@ -120,11 +115,43 @@ class FieldController extends Controller
             'description' => 'required|string',
         ]);
 
+        $field = Field::findOrFail($id);
         $field->update($validated);
+
+        // Konversi jam
+        $startHourRaw = str_replace('.', ':', $validated['startHour']);
+        $endHourRaw = str_replace('.', ':', $validated['endHour']);
+        $startHour = Carbon::createFromFormat('H:i', $startHourRaw)->hour;
+        $endHour = Carbon::createFromFormat('H:i', $endHourRaw)->hour;
+
+        // Ambil jam yang sudah ada di tabel times
+        $existingTimes = Time::where('fieldId', $field->fieldId)->get();
+        $existingHours = $existingTimes->pluck('time')->map(function ($time) {
+            return Carbon::createFromFormat('H:i:s', $time)->hour;
+        })->toArray();
+
+        // Tambahkan jam baru jika diperpanjang
+        for ($hour = $startHour; $hour < $endHour; $hour++) {
+            if (!in_array($hour, $existingHours)) {
+                Time::create([
+                    'fieldId'   => $field->fieldId,
+                    'time'      => Carbon::createFromTime($hour, 0, 0)->format('H:i:s'),
+                    'status'    => 'Available',
+                    'price'     => 100000,
+                ]);
+            }
+        }
+
+        // Hapus jam yang tidak digunakan lagi jika dipersingkat
+        foreach ($existingTimes as $time) {
+            $hour = Carbon::createFromFormat('H:i:s', $time->time)->hour;
+            if ($hour < $startHour || $hour >= $endHour) {
+                $time->delete();
+            }
+        }
 
         return response()->json([
             'success' => true,
-            'time' => now()->toISOString(),
             'message' => 'Lapangan berhasil diperbarui',
             'field' => $field
         ]);
@@ -141,8 +168,8 @@ class FieldController extends Controller
             ], 404);
         }
 
-        // Check if there are related reservations before deletion
-        if ($field->reservations()->count() > 0) {
+        // Check if there are related reservationDetails before deletion
+        if ($field->reservationDetails()->count() > 0) {
             return response()->json([
                 'success' => false,
                 'message' => 'Tidak dapat menghapus lapangan dengan laporan yang ada'
@@ -158,17 +185,33 @@ class FieldController extends Controller
         ]);
     }
 
-    public function store(Request $request){
+    public function store(Request $request)
+    {
         $validated = $request->validate([
             'locationId' => 'required|integer',
             'sportId' => 'required|integer',
             'name' => 'required|string|max:255',
-            'startHour' => 'required|string',
-            'endHour' => 'required|string',
+            'startHour' => 'required|string', // format: 'HH:MM'
+            'endHour' => 'required|string',   // format: 'HH:MM'
             'description' => 'required|string',
         ]);
 
         $field = Field::create($validated);
+
+        $startHour = Carbon::createFromFormat('H:i', $validated['startHour'])->hour;
+        $endHour = Carbon::createFromFormat('H:i', $validated['endHour'])->hour;
+
+        for ($hour = $startHour; $hour < $endHour; $hour++) {
+            Time::create([
+                // Jika `timeId` auto increment, hapus baris ini
+                // 'timeId'  => optional,
+
+                'fieldId'   => $field->fieldId,
+                'time'      => Carbon::createFromTime($hour, 0, 0)->format('H:i:s'),
+                'status'    => 'Available',
+                'price'     => 100000,
+            ]);
+        }
 
         return response()->json([
             'success' => true,

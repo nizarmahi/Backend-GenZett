@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('users', function (Blueprint $table) {
             $table->id('userId');
-            $table->enum('role', ['guest', 'user', 'member', 'admin'])->default('guest'); // dari ERD
+            $table->enum('role', ['user','admin',"superadmin"])->default('user');
             $table->string('username', 16)->unique();
             $table->string('name', 255);
             $table->string('email', 255)->unique();

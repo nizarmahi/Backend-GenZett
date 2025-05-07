@@ -17,4 +17,9 @@ class Sport extends Model
     {
         return $this->hasMany(Field::class, 'sportId');
     }
+
+    public function memberships()
+    {
+        return $this->hasMany(Membership::class, 'sportId');
+    }
 }

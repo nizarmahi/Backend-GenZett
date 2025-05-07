@@ -16,6 +16,7 @@ return new class extends Migration
             $table->string('locationName')->nullable();
             $table->text('description')->nullable();
             $table->text('locationPath')->nullable();
+            $table->string('address')->nullable();
             $table->timestamps();
         });
     }

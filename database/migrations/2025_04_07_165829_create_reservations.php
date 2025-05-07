@@ -16,7 +16,7 @@ return new class extends Migration
             // $table->foreignId('userId')->constrained('users')->onDelete('cascade');
             $table->unsignedBigInteger('userId');
             $table->foreign('userId')->references('userId')->on('users')->onDelete('cascade');
-            $table->enum('status', ['upcoming', 'ongoing', 'completed'])->nullable();
+            // $table->enum('status', ['upcoming', 'ongoing', 'completed'])->nullable();/
             $table->string('name')->nullable();
             $table->enum('paymentStatus', ['pending', 'dp', 'complete', 'fail'])->nullable();
             $table->integer('total')->nullable();

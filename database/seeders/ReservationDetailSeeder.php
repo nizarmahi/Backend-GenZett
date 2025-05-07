@@ -22,6 +22,7 @@ class ReservationDetailSeeder extends Seeder
             DB::table('reservation_details')->insert([
                 ...$detail,
                 'created_at' => now(),
+                'updated_at' => now(),
             ]);
         }
     }

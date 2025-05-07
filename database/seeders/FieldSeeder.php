@@ -22,6 +22,7 @@ class FieldSeeder extends Seeder
             DB::table('fields')->insert([
                 ...$field,
                 'created_at' => now(),
+                'updated_at' => now(),
             ]);
         }
     }

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\API\AdminController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\API\SportController;
@@ -7,6 +8,7 @@ use App\Http\Controllers\API\LocationController;
 use App\Http\Controllers\API\FieldController;
 use App\Http\Controllers\API\ReservationController;
 use App\Http\Controllers\API\AuthController;
+use App\Http\Controllers\API\UserController;
 
 Route::prefix('reservation')->group(function () {
     Route::post('/', [ReservationController::class, 'store']);
@@ -58,6 +60,20 @@ Route::group(['prefix' => 'fields'], function () {
     Route::get('/{id}', [FieldController::class, 'show']);
     Route::put('/{id}', [FieldController::class, 'update']);
     Route::delete('/{id}', [FieldController::class, 'destroy']);
+});
+// Admin API routes
+Route::group(['prefix' => 'admins'], function () {
+    Route::get('/', [AdminController::class, 'index']);
+    Route::post('/', [AdminController::class, 'store']);
+    Route::get('/{id}', [AdminController::class, 'show']);
+    Route::put('/{id}', [AdminController::class, 'update']);
+    Route::delete('/{id}', [AdminController::class, 'destroy']);
+});
+Route::group(['prefix' => 'users'], function () {
+    Route::get('/', [UserController::class, 'index']);
+    Route::get('/{id}', [UserController::class, 'show']);
+    Route::put('/{id}', [UserController::class, 'update']);
+    Route::delete('/{id}', [UserController::class, 'destroy']);
 });
 // Route::get('/locations', [LocationController::class, 'index']);
 // Route::get('/locations/{id}', [LocationController::class, 'show']);

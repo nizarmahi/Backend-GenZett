@@ -33,6 +33,7 @@ class UserSeeder extends Seeder
                 'password' => bcrypt('password'),
                 'role' => 'Member',
                 'created_at' => now(),
+                'updated_at' => now(),
             ]);
         }
     }

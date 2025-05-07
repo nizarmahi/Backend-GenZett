@@ -19,7 +19,7 @@ return new class extends Migration
             $table->string('email', 255)->unique();
             $table->string('phone', 15)->nullable()->unique();
             $table->string('password', 255); // panjang untuk hash bcrypt
-            $table->timestamp('created_at')->useCurrent();
+            $table->timestamps();
             $table->rememberToken()->nullable();
         });
 

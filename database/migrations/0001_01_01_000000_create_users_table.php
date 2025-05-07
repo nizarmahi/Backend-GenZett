@@ -15,9 +15,11 @@ return new class extends Migration
             $table->string('name', 255);
             $table->string('email', 255)->unique();
             $table->string('phone', 15)->nullable()->unique();
-            $table->string('password', 255);
-            $table->rememberToken();
+
+            $table->string('password', 255); // panjang untuk hash bcrypt
             $table->timestamps();
+            $table->rememberToken()->nullable();
+
         });
 
         Schema::create('password_reset_tokens', function (Blueprint $table) {

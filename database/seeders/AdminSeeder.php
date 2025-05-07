@@ -22,6 +22,7 @@ class AdminSeeder extends Seeder
             DB::table('admins')->insert([
                 ...$admin,
                 'created_at' => now(),
+                'updated_at' => now(),
             ]);
         }
     }

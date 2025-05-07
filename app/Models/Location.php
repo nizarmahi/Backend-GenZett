@@ -11,7 +11,7 @@ class Location extends Model
 
     protected $primaryKey = 'locationId';
 
-    protected $fillable = ['locationName', 'description', 'locationPath'];
+    protected $fillable = ['locationName', 'description', 'locationPath', 'address'];
 
     public function fields()
     {
@@ -21,10 +21,5 @@ class Location extends Model
     public function admins()
     {
         return $this->hasMany(Admin::class, 'locationId');
-    }
-
-    public function memberships()
-    {
-        return $this->hasMany(Membership::class, 'locationId');
     }
 }

@@ -74,7 +74,7 @@ class LocationController extends Controller
         $validator = Validator::make($request->all(), [
             'locationName' => 'required|string|max:255',
             'description' => 'required|string',
-            'locationPath' => 'nullable|string|max:255',
+            'locationPath' => 'required|string|max:255',
         ]);
 
         if ($validator->fails()) {
@@ -85,7 +85,8 @@ class LocationController extends Controller
             ], 422);
         }
 
-        $location = Location::create($request->all());
+        $validatedData = $validator->validated();
+        $location = Location::create($validatedData);
 
         return response()->json([
             'success' => true,
@@ -151,7 +152,7 @@ class LocationController extends Controller
         $validator = Validator::make($request->all(), [
             'locationName' => 'sometimes|required|string|max:255',
             'description' => 'sometimes|required|string',
-            'locationPath' => 'sometimes|nullable|string|max:255',
+            'locationPath' => 'sometimes|required|string|max:255',
         ]);
 
         if ($validator->fails()) {
@@ -162,7 +163,8 @@ class LocationController extends Controller
             ], 422);
         }
 
-        $location->update($request->all());
+        $validatedData = $validator->validated();
+        $location->update($validatedData);
 
         return response()->json([
             'success' => true,

@@ -6,21 +6,18 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('users', function (Blueprint $table) {
             $table->id('userId');
-            $table->enum('role', ['user','admin',"superadmin"])->default('user');
+            $table->enum('role', ['user', 'admin', 'superadmin'])->default('user');
             $table->string('username', 16)->unique();
             $table->string('name', 255);
             $table->string('email', 255)->unique();
             $table->string('phone', 15)->nullable()->unique();
-            $table->string('password', 255); // panjang untuk hash bcrypt
-            $table->timestamp('created_at')->useCurrent();
-            $table->rememberToken()->nullable();
+            $table->string('password', 255);
+            $table->rememberToken();
+            $table->timestamps();
         });
 
         Schema::create('password_reset_tokens', function (Blueprint $table) {
@@ -31,8 +28,9 @@ return new class extends Migration
 
         Schema::create('sessions', function (Blueprint $table) {
             $table->string('id')->primary();
-            $table->foreignId('user_id')->nullable()->index();
-            $table->foreign('user_id')->references('userId')->on('users')->onDelete('cascade');
+            $table->foreignId('user_id')->nullable()->index()
+                ->constrained('users', 'userId')
+                ->onDelete('cascade');
             $table->string('ip_address', 45)->nullable();
             $table->text('user_agent')->nullable();
             $table->longText('payload');
@@ -40,9 +38,7 @@ return new class extends Migration
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
+
     public function down(): void
     {
         Schema::dropIfExists('sessions');

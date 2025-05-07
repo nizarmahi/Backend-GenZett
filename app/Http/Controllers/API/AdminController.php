@@ -1,0 +1,174 @@
+<?php
+
+namespace App\Http\Controllers\API;
+
+use App\Http\Controllers\Controller;
+use App\Models\Admin;
+use App\Models\User;
+use Illuminate\Http\Request;
+
+class AdminController extends Controller
+{
+    public function index(Request $request){
+        $page = (int)$request->input('page', 1);
+        $limit = (int)$request->input('limit', 10);
+        $search = $request->input('search');
+        $location = $request->input('locations') ? explode('.', $request->input('locations')) : [];
+
+        // Start query with eager loading of relationships
+        $query = Admin::with(['user', 'location']);
+
+        if (!empty($search)) {
+            $query->search($search);
+        }
+
+        // Apply filters
+        if (!empty($location)) {
+            $query->hasLocation($location);
+        }
+
+        // Get total count
+        $totalAdmins = $query->count();
+
+        // Calculate offset
+        $offset = ($page - 1) * $limit;
+
+        // Get paginated results
+        $admins = $query->skip($offset)->take($limit)->get();
+
+        // Format the response
+        $formattedAdmins = $admins->map(function ($admin) {
+            return [
+                'id' => $admin->adminId,
+                'username' => $admin->user->username,
+                'name' => $admin->user->name,
+                'email' => $admin->user->email,
+                'location' => $admin->location->locationName,
+                'phone' => $admin->user->phone,
+                'created_at' => $admin->created_at,
+                'updated_at' => $admin->updated_at,
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'time' => now()->toISOString(),
+            'message' => 'Data admin berhasil diambil',
+            'totalAdmins' => $totalAdmins,
+            'offset' => $offset,
+            'limit' => $limit,
+            'admins' => $formattedAdmins
+        ]);
+    }
+    public function show($id)
+    {
+        $admin = Admin::with(['user', 'location'])
+            ->find($id);
+
+        if (!$admin) {
+            return response()->json([
+                'success' => false,
+                'message' => "Admin dengan ID {$id} tidak ditemukan"
+            ], 404);
+        }
+
+        $formattedAdmin = [
+            'id' => $admin->adminId,
+            'username' => $admin->user->username,
+            'name' => $admin->user->name,
+            'email' => $admin->user->email,
+            'location' => $admin->location->locationName,
+            'phone' => $admin->user->phone,
+            'created_at' => $admin->created_at,
+            'updated_at' => $admin->updated_at,
+        ];
+
+        return response()->json([
+            'success' => true,
+            'time' => now()->toISOString(),
+            'message' => "Admin dengan ID {$id} ditemukan",
+            'admin' => $formattedAdmin
+        ]);
+    }
+    
+    public function update(Request $request, $id)
+    {
+        $validated = $request->validate([
+            'locationId' => 'required|integer',
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255',
+            'phone' => 'required|string|max:255',
+        ]);
+
+        $admin = Admin::findOrFail($id);
+        $admin->update($validated);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Admin berhasil diperbarui',
+            'admin' => $admin
+        ]);
+    }
+
+    public function destroy($id)
+    {
+        $admin = Admin::find($id);
+
+        if (!$admin) {
+            return response()->json([
+                'success' => false,
+                'message' => "Admin dengan ID {$id} tidak ditemukan"
+            ], 404);
+        }
+
+        $admin->delete();
+
+        return response()->json([
+            'success' => true,
+            'time' => now()->toISOString(),
+            'message' => 'Admin berhasil dihapus'
+        ]);
+    }
+
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'username' => 'required|string|max:255',
+            'password' => 'required|string|min:8|confirmed',
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255',
+            'phone' => 'required|string|max:255',
+            'locationId' => 'required|integer',
+        ]);
+
+        $user = User::create([
+            'username' => $validated['username'],
+            'password' => bcrypt($validated['password']),
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'phone' => $validated['phone'],
+            'role' => 'admin',
+        ]);
+        if (!$user) {
+            return response()->json(['success' => false, 'message' => 'User gagal dibuat'], 500);
+        }
+        
+        $admin = Admin::create([
+            'userId'     => $user->userId,
+            'locationId' => $validated['locationId'],
+        ]);
+        
+        if (!$admin) {
+            return response()->json(['success' => false, 'message' => 'Admin gagal dibuat'], 500);
+        }
+        // dd($user, $admin); 
+
+        return response()->json([
+            'success' => true,
+            'time' => now()->toISOString(),
+            'message' => 'Admin berhasil ditambahkan',
+            'admin' => $admin,
+            'user' => $user
+        ], 201);
+    }
+}

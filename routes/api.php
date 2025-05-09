@@ -8,6 +8,7 @@ use App\Http\Controllers\API\LocationController;
 use App\Http\Controllers\API\FieldController;
 use App\Http\Controllers\API\ReservationController;
 use App\Http\Controllers\API\AuthController;
+use App\Http\Controllers\API\ScheduleController;
 use App\Http\Controllers\API\UserController;
 
 Route::prefix('reservation')->group(function () {
@@ -74,6 +75,9 @@ Route::group(['prefix' => 'users'], function () {
     Route::get('/{id}', [UserController::class, 'show']);
     Route::put('/{id}', [UserController::class, 'update']);
     Route::delete('/{id}', [UserController::class, 'destroy']);
+});
+Route::group(['prefix' => 'schedules'], function () {
+    Route::get('/', [ScheduleController::class, 'index']);
 });
 // Route::get('/locations', [LocationController::class, 'index']);
 // Route::get('/locations/{id}', [LocationController::class, 'show']);

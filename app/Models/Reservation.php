@@ -12,7 +12,7 @@ class Reservation extends Model
     protected $primaryKey = 'reservationId';
 
     protected $fillable = [
-        'userId', 'name', 'paymentStatus', 'total', 'remaining'
+        'userId', 'name', 'paymentStatus', 'total'
     ];
 
     public function user()

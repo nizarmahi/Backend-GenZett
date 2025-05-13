@@ -12,6 +12,7 @@ use App\Http\Controllers\API\AuthController;
 use App\Http\Controllers\API\OTPController;
 use App\Http\Controllers\API\ScheduleController;
 use App\Http\Controllers\API\UserController;
+use App\Http\Controllers\API\JWTAuth;
 
 
 Route::prefix('reservation')->group(function () {
@@ -35,7 +36,9 @@ Route::prefix('reservation')->group(function () {
 // Auth Routes
 Auth::routes(['verify' => true]);
 // Register routes
-Route::post('register', [UserController::class, 'register']);
+Route::post('register', [AuthController::class, 'register']);
+Route::post('login', [AuthController::class, 'login']);
+Route::post('logout', [AuthController::class, 'logout']);
 
 // Public routes
 // Sport API routes

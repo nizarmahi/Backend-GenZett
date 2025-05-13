@@ -1,9 +1,9 @@
 <?php return array(
     'root' => array(
         'name' => 'laravel/laravel',
-        'pretty_version' => 'dev-main',
-        'version' => 'dev-main',
-        'reference' => 'f8bc488a77a884db2d0a94b2bd1ce5f27f179901',
+        'pretty_version' => 'dev-development',
+        'version' => 'dev-development',
+        'reference' => '2a865f9708cc799e7a16e4d7933adcbc73d78e9a',
         'type' => 'project',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -397,7 +397,7 @@
         'laravel/laravel' => array(
             'pretty_version' => 'dev-main',
             'version' => 'dev-main',
-            'reference' => 'f8bc488a77a884db2d0a94b2bd1ce5f27f179901',
+            'reference' => '0a5a6cd1297466f6df01d7fa6d9e6398d7cdea88',
             'type' => 'project',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
@@ -467,9 +467,9 @@
             'dev_requirement' => false,
         ),
         'league/commonmark' => array(
-            'pretty_version' => '2.6.1',
-            'version' => '2.6.1.0',
-            'reference' => 'd990688c91cedfb69753ffc2512727ec646df2ad',
+            'pretty_version' => '2.7.0',
+            'version' => '2.7.0.0',
+            'reference' => '6fbb36d44824ed4091adbcf4c7d4a3923cdb3405',
             'type' => 'library',
             'install_path' => __DIR__ . '/../league/commonmark',
             'aliases' => array(),
@@ -1188,9 +1188,9 @@
             'dev_requirement' => false,
         ),
         'symfony/polyfill-php80' => array(
-            'pretty_version' => 'v1.31.0',
-            'version' => '1.31.0.0',
-            'reference' => '60328e362d4c2c802a54fcbf04f9d3fb892b4cf8',
+            'pretty_version' => 'v1.32.0',
+            'version' => '1.32.0.0',
+            'reference' => '0cc9dd0f17f61d8131e7df6b84bd344899fe2608',
             'type' => 'library',
             'install_path' => __DIR__ . '/../symfony/polyfill-php80',
             'aliases' => array(),

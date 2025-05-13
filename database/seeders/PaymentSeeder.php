@@ -22,6 +22,7 @@ class PaymentSeeder extends Seeder
             DB::table('payments')->insert([
                 ...$payment,
                 'created_at' => now(),
+                'updated_at' => now(),
             ]);
         }
     }

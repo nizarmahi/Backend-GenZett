@@ -9,6 +9,7 @@ use App\Models\Sport;
 use App\Models\Time;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
 
 class FieldController extends Controller
 {
@@ -106,7 +107,7 @@ class FieldController extends Controller
     
     public function update(Request $request, $id)
     {
-        $validated = $request->validate([
+        $validator = Validator::make($request->all(), [
             'locationId' => 'required|integer',
             'sportId' => 'required|integer',
             'name' => 'required|string|max:255',
@@ -115,12 +116,22 @@ class FieldController extends Controller
             'description' => 'required|string',
         ]);
 
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validasi gagal',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        $validatedData = $validator->validated();
+
         $field = Field::findOrFail($id);
-        $field->update($validated);
+        $field->update($validatedData);
 
         // Konversi jam
-        $startHourRaw = str_replace('.', ':', $validated['startHour']);
-        $endHourRaw = str_replace('.', ':', $validated['endHour']);
+        $startHourRaw = str_replace('.', ':', $validatedData['startHour']);
+        $endHourRaw = str_replace('.', ':', $validatedData['endHour']);
         $startHour = Carbon::createFromFormat('H:i', $startHourRaw)->hour;
         $endHour = Carbon::createFromFormat('H:i', $endHourRaw)->hour;
 
@@ -142,7 +153,6 @@ class FieldController extends Controller
             }
         }
 
-        // Hapus jam yang tidak digunakan lagi jika dipersingkat
         foreach ($existingTimes as $time) {
             $hour = Carbon::createFromFormat('H:i:s', $time->time)->hour;
             if ($hour < $startHour || $hour >= $endHour) {
@@ -156,6 +166,7 @@ class FieldController extends Controller
             'field' => $field
         ]);
     }
+
 
     public function destroy($id)
     {

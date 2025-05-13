@@ -4,24 +4,24 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
-use Carbon\Carbon;
 
 class LocationSeeder extends Seeder
 {
     public function run(): void
     {
         $locations = [
-            ['locationName' => 'Lapangan A', 'description' => 'Lokasi pusat kota', 'locationPath' => 'lokasi1.jpg'],
-            ['locationName' => 'Lapangan B', 'description' => 'Dekat taman', 'locationPath' => 'lokasi2.jpg'],
-            ['locationName' => 'Lapangan C', 'description' => 'Samping kampus', 'locationPath' => 'lokasi3.jpg'],
-            ['locationName' => 'Lapangan D', 'description' => 'Dekat stasiun', 'locationPath' => 'lokasi4.jpg'],
-            ['locationName' => 'Lapangan E', 'description' => 'Daerah pinggiran', 'locationPath' => 'lokasi5.jpg'],
+            ['locationName' => 'Lowokwaru', 'description' => 'Daerah kampus dan pemukiman', 'locationPath' => 'lowokwaru.jpg', 'address' => 'Jl. Soekarno Hatta, Malang'],
+            ['locationName' => 'Klojen', 'description' => 'Pusat kota Malang', 'locationPath' => 'klojen.jpg', 'address' => 'Jl. Ijen, Malang'],
+            ['locationName' => 'Sukun', 'description' => 'Daerah industri dan hunian', 'locationPath' => 'sukun.jpg', 'address' => 'Jl. S. Supriadi, Malang'],
+            ['locationName' => 'Blimbing', 'description' => 'Wilayah bisnis dan transportasi', 'locationPath' => 'blimbing.jpg', 'address' => 'Jl. LA Sucipto, Malang'],
+            ['locationName' => 'Kedungkandang', 'description' => 'Wilayah pinggiran dengan lahan luas', 'locationPath' => 'kedungkandang.jpg', 'address' => 'Jl. Ki Ageng Gribig, Malang'],
         ];
 
         foreach ($locations as $loc) {
             DB::table('locations')->insert([
                 ...$loc,
                 'created_at' => now(),
+                'updated_at' => now(),
             ]);
         }
     }

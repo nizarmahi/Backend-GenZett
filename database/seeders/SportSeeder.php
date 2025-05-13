@@ -45,6 +45,7 @@ class SportSeeder extends Seeder
             DB::table('sports')->insert([
                 ...$sport,
                 'created_at' => now(),
+                'updated_at' => now(),
             ]);
         }
     }

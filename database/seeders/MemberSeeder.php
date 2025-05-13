@@ -21,12 +21,13 @@ class MemberSeeder extends Seeder
         for ($index = 0; $index < count($memberships); $index++) {
             foreach ($memberships as $membership) {
                 DB::table('memberships')->insert([
-                    'locationId' => $index + 1,
+                    'sportId' => $index + 1,
                     'name' => $membership['name'],
                     'description' => $membership['description'],
                     'price' => $membership['price'],
                     'weeks' => $membership['weeks'],
                     'created_at' => now(),
+                    'updated_at' => now(),
                 ]);
             }
         }

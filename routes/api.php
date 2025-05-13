@@ -3,13 +3,16 @@
 use App\Http\Controllers\API\AdminController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\API\SportController;
 use App\Http\Controllers\API\LocationController;
 use App\Http\Controllers\API\FieldController;
 use App\Http\Controllers\API\ReservationController;
 use App\Http\Controllers\API\AuthController;
+use App\Http\Controllers\API\OTPController;
 use App\Http\Controllers\API\ScheduleController;
 use App\Http\Controllers\API\UserController;
+
 
 Route::prefix('reservation')->group(function () {
     Route::post('/', [ReservationController::class, 'store']);
@@ -30,8 +33,9 @@ Route::prefix('reservation')->group(function () {
 
 
 // Auth Routes
-// Route::post('/register', [AuthController::class, 'register']);
-// Route::post('/login', [AuthController::class, 'login']);
+Auth::routes(['verify' => true]);
+// Register routes
+Route::post('register', [UserController::class, 'register']);
 
 // Public routes
 // Sport API routes

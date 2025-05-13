@@ -7,6 +7,7 @@ use App\Http\Controllers\API\SportController;
 use App\Http\Controllers\API\LocationController;
 use App\Http\Controllers\API\FieldController;
 use App\Http\Controllers\API\ReservationController;
+use App\Http\Controllers\API\MembershipController;
 use App\Http\Controllers\API\AuthController;
 use App\Http\Controllers\API\ScheduleController;
 use App\Http\Controllers\API\UserController;
@@ -42,6 +43,7 @@ Route::group(['prefix' => 'sports'], function () {
     Route::put('/{id}', [SportController::class, 'update']);
     Route::delete('/{id}', [SportController::class, 'destroy']);
 });
+
 // Location API routes
 Route::group(['prefix' => 'locations'], function () {
     Route::get('/', [LocationController::class, 'index']);
@@ -52,6 +54,7 @@ Route::group(['prefix' => 'locations'], function () {
     Route::put('/{id}', [LocationController::class, 'update']);
     Route::delete('/{id}', [LocationController::class, 'destroy']);
 });
+
 // Field API routes
 Route::group(['prefix' => 'fields'], function () {
     Route::get('/', [FieldController::class, 'index']);
@@ -62,6 +65,7 @@ Route::group(['prefix' => 'fields'], function () {
     Route::put('/{id}', [FieldController::class, 'update']);
     Route::delete('/{id}', [FieldController::class, 'destroy']);
 });
+
 // Admin API routes
 Route::group(['prefix' => 'admins'], function () {
     Route::get('/', [AdminController::class, 'index']);
@@ -70,15 +74,29 @@ Route::group(['prefix' => 'admins'], function () {
     Route::put('/{id}', [AdminController::class, 'update']);
     Route::delete('/{id}', [AdminController::class, 'destroy']);
 });
+
+// User API routes
 Route::group(['prefix' => 'users'], function () {
     Route::get('/', [UserController::class, 'index']);
     Route::get('/{id}', [UserController::class, 'show']);
     Route::put('/{id}', [UserController::class, 'update']);
     Route::delete('/{id}', [UserController::class, 'destroy']);
 });
+
+// Schedule API routes
 Route::group(['prefix' => 'schedules'], function () {
     Route::get('/', [ScheduleController::class, 'index']);
 });
+
+// Membership API routes
+Route::group(['prefix' => 'memberships'], function () {
+    Route::get('/', [MembershipController::class, 'index']);
+    Route::post('/', [MembershipController::class, 'store']);
+    Route::get('/{id}', [MembershipController::class, 'show']);
+    Route::put('/{id}', [MembershipController::class, 'update']);
+    Route::delete('/{id}', [MembershipController::class, 'destroy']);
+});
+
 // Route::get('/locations', [LocationController::class, 'index']);
 // Route::get('/locations/{id}', [LocationController::class, 'show']);
 // Route::get('/fields', [FieldController::class, 'index']);

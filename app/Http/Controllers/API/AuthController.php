@@ -7,86 +7,84 @@ use Illuminate\Http\Request;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Facades\Validator;
+use Tymon\JWTAuth\Facades\JWTAuth;
+use Illuminate\Support\Facades\Auth;
 
 class AuthController extends Controller
 {
-    // CREATE - Register
     public function register(Request $request)
     {
-        $validated = $request->validate([
-            'username' => 'required|string|max:16|unique:users',
+        $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users',
-            'phone' => 'nullable|string|max:15|unique:users',
-            'password' => 'required|string|min:6|confirmed',
+            'email' => 'required|string|email|max:255|unique:users,email',
+            'phone' => 'required|string|max:255',
+            'password' => 'required|string|min:8|confirmed', // Pastikan password dikonfirmasi
         ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation error',
+                'errors' => $validator->errors()
+            ], 422);
+        }
 
         $user = User::create([
-            'username' => $validated['username'],
-            'name' => $validated['name'],
-            'email' => $validated['email'],
-            'phone' => $validated['phone'],
-            'password' => Hash::make($validated['password']),
+            'name' => $request->name,
+            'email' => $request->email,
+            'phone' => $request->phone,
+            'password' => Hash::make($request->password),
+            'role' => 'user',
         ]);
 
-        return response()->json(['message' => 'User registered successfully', 'user' => $user], 201);
+        event(new \Illuminate\Auth\Events\Registered($user));
+
+        $user->sendEmailVerificationNotification();
+
+
+        return response()->json([
+            'success' => true,
+            'message' => 'User successfully registered',
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'phone' => $user->phone,
+                'created_at' => $user->created_at,
+                'updated_at' => $user->updated_at,
+            ]
+        ], 201);
     }
 
-    // READ - Semua user
-    public function index()
+    public function login(Request $request)
     {
-        $users = User::all();
-        return response()->json($users);
-    }
-
-    // READ - Satu user
-    public function show($id)
-    {
-        $user = User::find($id);
-
-        if (!$user) {
-            return response()->json(['message' => 'User not found'], 404);
-        }
-
-        return response()->json($user);
-    }
-
-    // UPDATE - Satu user
-    public function update(Request $request, $userId)
-    {
-        $user = User::find($userId);
-
-        if (!$user) {
-            return response()->json(['message' => 'User tidak ditemukan.'], 404);
-        }
-
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email,' . $userId . ',userId',
-            'password' => 'nullable|string|min:6|confirmed',
+        $request->validate([
+            'email' => 'required|email',
+            'password' => 'required|string|min:6',
         ]);
+        $credentials = $request->only('email', 'password');
 
-        $user->name = $validated['name'];
-        $user->email = $validated['email'];
-
-        if (!empty($validated['password'])) {
-            $user->password = Hash::make($validated['password']);
+        if (!$token = JWTAuth::attempt($credentials)) {
+            return response()->json(['message' => 'Email atau password salah'], 401);
         }
 
-        $user->save();
+        $user = Auth::user();
 
-        return response()->json(['message' => 'User berhasil diperbarui.', 'user' => $user]);
+        return response()->json([
+            'message' => 'Login berhasil',
+            'user' => $user,
+            'token' => $token
+        ]);
     }
 
-
-    // DELETE - Satu user
-    public function destroy($id)
+    public function logout(Request $request)
     {
-        $user = User::find($id);
-        if (!$user) return response()->json(['message' => 'User not found'], 404);
+        JWTAuth::invalidate(JWTAuth::getToken());
 
-        $user->delete();
-
-        return response()->json(['message' => 'User deleted']);
+        return response()->json([
+            'status' => 'success',
+            'message' => 'You have been logged out successfully.'
+        ]);
     }
 }

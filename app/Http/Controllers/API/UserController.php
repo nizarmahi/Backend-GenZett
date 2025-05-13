@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Hash;
+
 
 class UserController extends Controller
 {
@@ -133,4 +135,54 @@ class UserController extends Controller
             'message' => 'User berhasil dihapus'
         ]);
     }
+
+    public function register(Request $request)
+    {
+        // Validasi input
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users,email',
+            'phone' => 'required|string|max:255',
+            'password' => 'required|string|min:8|confirmed', // Pastikan password dikonfirmasi
+        ]);
+
+        // Cek jika validasi gagal
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation error',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        // Buat user baru
+        $user = User::create([
+            'name' => $request->name,
+            'email' => $request->email,
+            'phone' => $request->phone,
+            'password' => Hash::make($request->password), // Hash password
+            'role' => 'user', // Peran default user
+        ]);
+
+        // Trigger event terdaftar
+        event(new \Illuminate\Auth\Events\Registered($user));
+
+        // Kirim email verifikasi
+        $user->sendEmailVerificationNotification();
+
+        // Kembalikan response sukses
+        return response()->json([
+            'success' => true,
+            'message' => 'User successfully registered',
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'phone' => $user->phone,
+                'created_at' => $user->created_at,
+                'updated_at' => $user->updated_at,
+            ]
+        ], 201);
+    }
+
 }

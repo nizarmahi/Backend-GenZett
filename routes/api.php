@@ -3,6 +3,7 @@
 use App\Http\Controllers\API\AdminController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\API\SportController;
 use App\Http\Controllers\API\LocationController;
 use App\Http\Controllers\API\FieldController;
@@ -11,6 +12,7 @@ use App\Http\Controllers\API\AuthController;
 use App\Http\Controllers\API\OTPController;
 use App\Http\Controllers\API\ScheduleController;
 use App\Http\Controllers\API\UserController;
+
 
 Route::prefix('reservation')->group(function () {
     Route::post('/', [ReservationController::class, 'store']);
@@ -31,16 +33,9 @@ Route::prefix('reservation')->group(function () {
 
 
 // Auth Routes
-Route::prefix('users')->group(function () {
-    Route::post('/register', [AuthController::class, 'register']); 
-    Route::get('/', [AuthController::class, 'index']);             
-    Route::get('/{id}', [AuthController::class, 'show']);          
-    Route::put('/{id}', [AuthController::class, 'update']);        
-    Route::delete('/{id}', [AuthController::class, 'destroy']);    
-});
-// Route::post('/login', [AuthController::class, 'login']);
-// Route::post('/register/send-otp', [OTPController::class, 'sendOtp']);
-// Route::post('/register/verify', [OTPController::class, 'verifyOtpAndRegister']);
+Auth::routes(['verify' => true]);
+// Register routes
+Route::post('register', [UserController::class, 'register']);
 
 // Public routes
 // Sport API routes

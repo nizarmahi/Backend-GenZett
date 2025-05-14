@@ -9,6 +9,15 @@ use Illuminate\Http\Request;
 
 class AdminController extends Controller
 {
+    /**
+     * Tampilkan daftar admin
+     *
+     * Mengambil daftar admin dengan opsi pencarian dan filter berdasarkan lokasi.
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     *
+     */
     public function index(Request $request){
         $page = (int)$request->input('page', 1);
         $limit = (int)$request->input('limit', 10);
@@ -60,6 +69,14 @@ class AdminController extends Controller
             'admins' => $formattedAdmins
         ]);
     }
+    /**
+     * Detail Admin
+     *
+     * Mengambil detail admin berdasarkan ID.
+     *
+     * @param int $id
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function show($id)
     {
         $admin = Admin::with(['user', 'location'])
@@ -90,7 +107,16 @@ class AdminController extends Controller
             'admin' => $formattedAdmin
         ]);
     }
-    
+
+    /**
+     * Update Admin
+     *
+     * Mengupdate data admin berdasarkan ID.
+     *
+     * @param Request $request
+     * @param int $id
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function update(Request $request, $id)
     {
         $validated = $request->validate([
@@ -110,6 +136,12 @@ class AdminController extends Controller
         ]);
     }
 
+    /**
+     * Hapus Admin
+     *
+     * Menghapus admin berdasarkan ID
+     *
+     */
     public function destroy($id)
     {
         $admin = Admin::find($id);
@@ -130,6 +162,14 @@ class AdminController extends Controller
         ]);
     }
 
+    /**
+     * Tambah Admin
+     *
+     * Menyimpan data admin baru.
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -152,16 +192,16 @@ class AdminController extends Controller
         if (!$user) {
             return response()->json(['success' => false, 'message' => 'User gagal dibuat'], 500);
         }
-        
+
         $admin = Admin::create([
             'userId'     => $user->userId,
             'locationId' => $validated['locationId'],
         ]);
-        
+
         if (!$admin) {
             return response()->json(['success' => false, 'message' => 'Admin gagal dibuat'], 500);
         }
-        // dd($user, $admin); 
+        // dd($user, $admin);
 
         return response()->json([
             'success' => true,

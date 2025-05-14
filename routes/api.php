@@ -15,17 +15,6 @@ use App\Http\Controllers\API\UserController;
 use App\Http\Controllers\API\JWTAuth;
 
 
-Route::prefix('reservation')->group(function () {
-    Route::post('/', [ReservationController::class, 'store']);
-    Route::get('/', [ReservationController::class, 'index']);
-    Route::get('/{id}', [ReservationController::class, 'show']);
-    Route::put('/{id}', [ReservationController::class, 'update']);
-    Route::delete('/{id}', [ReservationController::class, 'destroy']);
-    Route::get('/{id}/details', [ReservationController::class, 'details']);
-    Route::get('/{id}/payment', [ReservationController::class, 'payment']);
-    Route::put('/{id}/status', [ReservationController::class, 'updatePaymentStatus']);
-});
-
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -69,6 +58,21 @@ Route::group(['prefix' => 'fields'], function () {
     Route::put('/{id}', [FieldController::class, 'update']);
     Route::delete('/{id}', [FieldController::class, 'destroy']);
 });
+// Reservation API routes
+Route::group(['prefix' => 'reservations'], function () {
+    Route::get('/location', [ReservationController::class, 'getAllLocations']);
+    Route::get('/sport', [ReservationController::class, 'getSports']);
+
+    Route::get('/', [ReservationController::class, 'index']);
+    Route::post('/', [ReservationController::class, 'store']);
+    Route::get('/{id}', [ReservationController::class, 'show']);
+    Route::put('/{id}', [ReservationController::class, 'update']);
+    Route::delete('/{id}', [ReservationController::class, 'destroy']);
+    Route::put('/{id}/status', [ReservationController::class, 'updatePaymentStatus']);
+    Route::put('/{id}/cancel', [ReservationController::class, 'cancel']);
+    Route::put('/{id}/confirm', [ReservationController::class, 'confirmPayment']);
+    Route::get('/{id}/schedules', [ReservationController::class, 'getScheduleByLocation']);
+});
 // Admin API routes
 Route::group(['prefix' => 'admins'], function () {
     Route::get('/', [AdminController::class, 'index']);
@@ -77,15 +81,18 @@ Route::group(['prefix' => 'admins'], function () {
     Route::put('/{id}', [AdminController::class, 'update']);
     Route::delete('/{id}', [AdminController::class, 'destroy']);
 });
+// User API routes
 Route::group(['prefix' => 'users'], function () {
     Route::get('/', [UserController::class, 'index']);
     Route::get('/{id}', [UserController::class, 'show']);
     Route::put('/{id}', [UserController::class, 'update']);
     Route::delete('/{id}', [UserController::class, 'destroy']);
 });
+// Schedules API routes
 Route::group(['prefix' => 'schedules'], function () {
     Route::get('/', [ScheduleController::class, 'index']);
 });
+
 // Route::get('/locations', [LocationController::class, 'index']);
 // Route::get('/locations/{id}', [LocationController::class, 'show']);
 // Route::get('/fields', [FieldController::class, 'index']);

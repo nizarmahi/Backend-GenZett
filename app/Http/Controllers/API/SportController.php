@@ -9,6 +9,14 @@ use Illuminate\Support\Facades\DB;
 
 class SportController extends Controller
 {
+    /**
+     * Tampilkan daftar olahraga
+     *
+     * Mengambil daftar olahraga dengan opsi pencarian.
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function index(Request $request)
     {
         $page = $request->input('page', 1);
@@ -47,6 +55,14 @@ class SportController extends Controller
         ]);
     }
 
+    /**
+     * Tambah olahraga baru
+     *
+     * Menyimpan olahraga baru ke dalam database.
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -64,6 +80,14 @@ class SportController extends Controller
         ], 201);
     }
 
+    /**
+     * Tampilkan detail olahraga
+     *
+     * Mengambil detail olahraga berdasarkan ID.
+     *
+     * @param int $id
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function show($id)
     {
         $sport = Sport::find($id);
@@ -89,6 +113,15 @@ class SportController extends Controller
         ]);
     }
 
+    /**
+     * Perbarui olahraga
+     *
+     * Memperbarui data olahraga berdasarkan ID.
+     *
+     * @param Request $request
+     * @param int $id
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function update(Request $request, $id)
     {
         $sport = Sport::find($id);
@@ -116,6 +149,14 @@ class SportController extends Controller
         ]);
     }
 
+    /**
+     * Hapus olahraga
+     *
+     * Menghapus olahraga berdasarkan ID.
+     *
+     * @param int $id
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function destroy($id)
     {
         $sport = Sport::find($id);

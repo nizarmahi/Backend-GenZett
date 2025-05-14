@@ -8,6 +8,14 @@ use Illuminate\Support\Facades\DB;
 
 class ScheduleController extends Controller
 {
+    /**
+     * Tampilkan daftar jadwal lapangan
+     *
+     * Mengambil daftar jadwal lapangan berdasarkan filter olahraga dan lokasi.
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function index(Request $request)
     {
         $query = DB::table('reservations')

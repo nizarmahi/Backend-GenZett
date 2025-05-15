@@ -11,7 +11,7 @@ class Membership extends Model
 
     protected $primaryKey = 'membershipId';
 
-    protected $fillable = ['name', 'description', 'price', 'weeks'];
+    protected $fillable = ['locationId','sportId', 'name', 'description', 'price', 'weeks'];
     protected $casts = [
         'created_at' => 'datetime',
     ];
@@ -20,5 +20,10 @@ class Membership extends Model
     public function sport()
     {
         return $this->belongsTo(Sport::class, 'sportId', 'sportId');
+    }
+
+    public function location()
+    {
+        return $this->belongsTo(Location::class, 'locationId');
     }
 }

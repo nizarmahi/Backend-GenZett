@@ -6,9 +6,19 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Hash;
+
 
 class UserController extends Controller
 {
+    /**
+     * Tampilkan daftar pengguna
+     *
+     * Mengambil daftar pengguna dengan opsi pencarian.
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function index(Request $request)
     {
         $page = (int)$request->input('page', 1);
@@ -33,7 +43,6 @@ class UserController extends Controller
         $formattedUsers = $users->map(function ($user) {
             return [
                 'id' => $user->userId,
-                'username' => $user->username,
                 'name' => $user->name,
                 'email' => $user->email,
                 'phone' => $user->phone,
@@ -52,6 +61,15 @@ class UserController extends Controller
             'users' => $formattedUsers
         ]);
     }
+
+    /**
+     * Detail Pengguna
+     *
+     * Menampilkan detail pengguna berdasarkan ID.
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function show($id)
     {
         $user = User::where('role', 'user')
@@ -66,7 +84,6 @@ class UserController extends Controller
 
         $formattedUser = [
             'id' => $user->userId,
-            'username' => $user->username,
             'name' => $user->name,
             'email' => $user->email,
             'phone' => $user->phone,
@@ -79,9 +96,17 @@ class UserController extends Controller
             'time' => now()->toISOString(),
             'message' => "User dengan ID {$id} ditemukan",
             'user' => $formattedUser
-        ]); 
+        ]);
     }
 
+    /**
+     * Update Pengguna
+     *
+     * Memperbarui data pengguna berdasarkan ID.
+     *
+     * @param Request $request
+     * @param int $id
+     */
     public function update(Request $request, $id)
     {
         $user = User::find($id);
@@ -93,7 +118,6 @@ class UserController extends Controller
             ], 404);
         }
         $validator = Validator::make($request->all(), [
-            'username' => 'sometimes|required|string|max:255|unique:users,username,' . $id . ',userId',
             'name' => 'sometimes|required|string|max:255',
             'email' => 'sometimes|required|string|email|max:255|unique:users,email,' . $id . ',userId',
             'phone' => 'sometimes|required|string|max:255',
@@ -114,6 +138,14 @@ class UserController extends Controller
         ]);
     }
 
+    /**
+     * Hapus Pengguna
+     *
+     * Menghapus pengguna berdasarkan ID.
+     *
+     * @param int $id
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function destroy($id)
     {
         $user = User::find($id);
@@ -133,4 +165,5 @@ class UserController extends Controller
             'message' => 'User berhasil dihapus'
         ]);
     }
+
 }

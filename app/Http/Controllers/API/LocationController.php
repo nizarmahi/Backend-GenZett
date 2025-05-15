@@ -12,6 +12,14 @@ use Illuminate\Support\Facades\Validator;
 
 class LocationController extends Controller
 {
+    /**
+     * Tampilkan daftar lokasi
+     *
+     * Mengambil daftar lokasi dengan opsi pencarian dan filter berdasarkan olahraga.
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function index(Request $request)
     {
         $page = (int)$request->input('page', 1);
@@ -21,22 +29,22 @@ class LocationController extends Controller
 
         // Start query with eager loading of relationships
         $query = Location::with(['fields', 'fields.sport']);
-        
+
         // Apply filters
         if (!empty($sports)) {
             $query->hasSport($sports);
         }
-        
+
         if ($search) {
             $query->search($search);
         }
 
         // Get total count
         $totalLocations = $query->count();
-        
+
         // Calculate offset
         $offset = ($page - 1) * $limit;
-        
+
         // Get paginated results
         $locations = $query->skip($offset)->take($limit)->get();
 
@@ -44,7 +52,7 @@ class LocationController extends Controller
         $formattedLocations = $locations->map(function ($location) {
             // Group sports by each location
             $sports = $location->fields->pluck('sport.sportName')->unique()->values()->all();
-            
+
             return [
                 'id' => $location->locationId,
                 'img' => $location->locationPath, // Using locationPath as image path
@@ -69,6 +77,14 @@ class LocationController extends Controller
         ]);
     }
 
+    /**
+     * Tambah lokasi baru
+     *
+     * Menyimpan lokasi baru ke dalam database.
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -95,6 +111,14 @@ class LocationController extends Controller
         ], 201);
     }
 
+    /**
+     * Detail Lokasi
+     *
+     * Mengambil detail lokasi berdasarkan ID.
+     *
+     * @param int $id
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function show($id)
     {
         $location = Location::with(['fields', 'fields.sport'])
@@ -109,7 +133,7 @@ class LocationController extends Controller
 
         // Format the response
         $sports = $location->fields->pluck('sport.sportName')->unique()->values()->all();
-        
+
         $formattedLocation = [
             'id' => $location->locationId,
             'img' => $location->locationPath,
@@ -138,6 +162,14 @@ class LocationController extends Controller
         ]);
     }
 
+    /**
+     * Update Lokasi
+     *
+     * Memperbarui data lokasi berdasarkan ID.
+     *
+     * @param int $id
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function update(Request $request, $id)
     {
         $location = Location::find($id);
@@ -173,6 +205,14 @@ class LocationController extends Controller
         ]);
     }
 
+    /**
+     * Hapus Lokasi
+     *
+     * Menghapus lokasi berdasarkan ID.
+     *
+     * @param int $id
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function destroy($id)
     {
         $location = Location::find($id);
@@ -200,6 +240,13 @@ class LocationController extends Controller
         ]);
     }
 
+    /**
+     * Mengambil semua Olahraga yang tersedia
+     *
+     * Mendapatkan daftar semua olahraga yang tersedia di lapangan.
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function getAllSports()
     {
         // Get unique sports from all fields

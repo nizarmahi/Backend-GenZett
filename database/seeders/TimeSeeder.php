@@ -11,7 +11,7 @@ class TimeSeeder extends Seeder
     public function run()
     {
         $fields = DB::table('fields')->get();
-        $startHour = 6;  // 06:00
+        $startHour = 10;  // 06:00
         $endHour = 23;   // 23:00
 
         $timeId = 1;

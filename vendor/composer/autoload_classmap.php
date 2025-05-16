@@ -6,8 +6,10 @@ $vendorDir = dirname(__DIR__);
 $baseDir = dirname($vendorDir);
 
 return array(
+    'App\\Http\\Controllers\\Api\\ReservationController' => $baseDir . '/app/Http/Controllers/Api/ReservationController.php',
     'App\\Http\\Controllers\\API\\AdminController' => $baseDir . '/app/Http/Controllers/API/AdminController.php',
     'App\\Http\\Controllers\\API\\AuthController' => $baseDir . '/app/Http/Controllers/API/AuthController.php',
+
     'App\\Http\\Controllers\\API\\FieldController' => $baseDir . '/app/Http/Controllers/API/FieldController.php',
     'App\\Http\\Controllers\\API\\LocationController' => $baseDir . '/app/Http/Controllers/API/LocationController.php',
     'App\\Http\\Controllers\\API\\ScheduleController' => $baseDir . '/app/Http/Controllers/API/ScheduleController.php',

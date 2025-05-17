@@ -22,6 +22,7 @@ class MemberSeeder extends Seeder
             foreach ($memberships as $membership) {
                 DB::table('memberships')->insert([
                     'sportId' => $index + 1,
+                    'locationId' => $index + 1,
                     'name' => $membership['name'],
                     'description' => $membership['description'],
                     'price' => $membership['price'],

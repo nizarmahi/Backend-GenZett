@@ -17,8 +17,12 @@ class Membership extends Model
     ];
     protected $table = 'memberships';
 
-    public function sport()
+    public function sports()
     {
         return $this->belongsTo(Sport::class, 'sportId', 'sportId');
+    }
+    public function locations()
+    {
+        return $this->belongsTo(Location::class, 'locationId', 'locationId');
     }
 }

@@ -120,19 +120,33 @@ class AdminController extends Controller
     public function update(Request $request, $id)
     {
         $validated = $request->validate([
-            'locationId' => 'required|integer',
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255',
             'phone' => 'required|string|max:255',
+            'locationId' => 'required|integer',
         ]);
 
         $admin = Admin::findOrFail($id);
-        $admin->update($validated);
+        
+        // Update the Admin model (only locationId is in this table)
+        $admin->update([
+            'locationId' => $validated['locationId']
+        ]);
+        
+        // Update the associated User model
+        $user = User::findOrFail($admin->userId);
+        $user->update([
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'phone' => $validated['phone'],
+        ]);
 
         return response()->json([
             'success' => true,
+            'time' => now()->toISOString(),
             'message' => 'Admin berhasil diperbarui',
-            'admin' => $admin
+            'admin' => $admin,
+            'user' => $user
         ]);
     }
 
@@ -144,7 +158,7 @@ class AdminController extends Controller
      */
     public function destroy($id)
     {
-        $admin = Admin::find($id);
+        $admin = Admin::with('user')->find($id);
 
         if (!$admin) {
             return response()->json([
@@ -153,7 +167,16 @@ class AdminController extends Controller
             ], 404);
         }
 
+        // Get the user ID before deleting the admin
+        $user = $admin->user;
+        
+        // Delete the admin record first (due to foreign key constraints)
         $admin->delete();
+        
+        // Delete the associated user record
+        if ($user) {
+            $user->delete();
+        }
 
         return response()->json([
             'success' => true,
@@ -189,6 +212,7 @@ class AdminController extends Controller
             'phone' => $validated['phone'],
             'role' => 'admin',
         ]);
+        
         if (!$user) {
             return response()->json(['success' => false, 'message' => 'User gagal dibuat'], 500);
         }
@@ -201,7 +225,6 @@ class AdminController extends Controller
         if (!$admin) {
             return response()->json(['success' => false, 'message' => 'Admin gagal dibuat'], 500);
         }
-        // dd($user, $admin);
 
         return response()->json([
             'success' => true,

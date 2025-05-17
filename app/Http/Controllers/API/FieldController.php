@@ -28,8 +28,18 @@ class FieldController extends Controller
         $sports = $request->input('sports') ? explode('.', $request->input('sports')) : [];
         $locations = $request->input('locations') ? explode('.', $request->input('locations')) : [];
 
+        $admin = auth()->user()->admin;
+
+        if (!$admin) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Akses ditolak. Anda bukan Admin Cabang ini.'
+            ], 403);
+        }
+
         // Start query with eager loading of relationships
-        $query = Field::with(['location', 'sport', 'times']);
+        $query = Field::with(['location', 'sport', 'times'])
+            ->where('locationId', $admin->location_id);
 
         // Apply filters
         if (!empty($sports)) {
@@ -81,6 +91,7 @@ class FieldController extends Controller
             'fields' => $formattedFields
         ]);
     }
+  
     /**
      * Detail Lapangan
      *
@@ -132,6 +143,17 @@ class FieldController extends Controller
      */
     public function update(Request $request, $id)
     {
+        $field = Field::findOrFail($id);
+
+        $admin = auth()->user()->admin;
+
+        if (!$admin || $field->locationId !== $admin->location_id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki izin untuk mengubah lapangan ini.'
+            ], 403);
+        }
+
         $validator = Validator::make($request->all(), [
             'locationId' => 'required|integer',
             'sportId' => 'required|integer',
@@ -204,6 +226,15 @@ class FieldController extends Controller
     {
         $field = Field::find($id);
 
+        $admin = auth()->user()->admin;
+
+        if (!$admin || $field->locationId !== $admin->location_id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki izin untuk menghapus lapangan ini.'
+            ], 403);
+        }
+
         if (!$field) {
             return response()->json([
                 'success' => false,
@@ -238,6 +269,15 @@ class FieldController extends Controller
      */
     public function store(Request $request)
     {
+        $admin = auth()->user()->admin;
+
+        if (!$admin) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Akses ditolak. Anda bukan Admin Cabang ini.'
+            ], 403);
+        }
+
         $validated = $request->validate([
             'locationId' => 'required|integer',
             'sportId' => 'required|integer',
@@ -246,6 +286,8 @@ class FieldController extends Controller
             'endHour' => 'required|string',   // format: 'HH:MM'
             'description' => 'required|string',
         ]);
+
+        $validated['locationId'] = $admin->location_id;
 
         $field = Field::create($validated);
 

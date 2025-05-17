@@ -22,4 +22,9 @@ class Location extends Model
     {
         return $this->hasMany(Admin::class, 'locationId');
     }
+
+    public function memberships()
+    {
+        return $this->hasMany(Membership::class, 'locationId');
+    }
 }

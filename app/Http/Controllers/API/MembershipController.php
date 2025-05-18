@@ -16,6 +16,12 @@ class MembershipController extends Controller
      */
     public function index(Request $request)
     {
+        $page = (int)$request->input('page', 1);
+        $limit = (int)$request->input('limit', 10);
+        $search = $request->input('search');
+        $sports = $request->input('sports') ? explode('.', $request->input('sports')) : [];
+        $locations = $request->input('locations') ? explode('.', $request->input('locations')) : [];
+
         $memberships = Membership::with(['location', 'sport'])->get();
         return response()->json([
             'success' => true,
@@ -31,14 +37,12 @@ class MembershipController extends Controller
                     'weeks' => $membership->weeks,
                     'location' => [
                     'id' => $membership->location->locationId,
-                    'name' => $membership->location->name
+                    'name' => $membership->location->locationName
                     ],
                     'sport' => [
                     'id' => $membership->sport->sportId,
-                    'name' => $membership->sport->name
+                    'name' => $membership->sport->sportName
                     ],
-                    'created_at' => $membership->created_at,
-                    'updated_at' => $membership->updated_at
                 ];
             })
         ], 200);
@@ -81,21 +85,19 @@ class MembershipController extends Controller
             'time' => now()->toISOString(),
             'message' => 'Paket Langganan berhasil dibuat',
             'data' => [
-            'id' => $membership->membershipId,
-            'name' => $membership->name,
-            'description' => $membership->description,
-            'price' => $membership->price,
-            'weeks' => $membership->weeks,
-            'location' => [
-                'id' => $membership->location->locationId,
-                'name' => $membership->location->name
-            ],
-            'sport' => [
-                'id' => $membership->sport->sportId,
-                'name' => $membership->sport->name
-            ],
-            'created_at' => $membership->created_at,
-            'updated_at' => $membership->updated_at
+                'id' => $membership->membershipId,
+                'name' => $membership->name,
+                'description' => $membership->description,
+                'price' => $membership->price,
+                'weeks' => $membership->weeks,
+                'location' => [
+                    'id' => $membership->location->locationId,
+                    'name' => $membership->location->locationName
+                ],
+                'sport' => [
+                    'id' => $membership->sport->sportId,
+                    'name' => $membership->sport->sportName
+                ],
             ]
         ], 201);
     }
@@ -127,14 +129,12 @@ class MembershipController extends Controller
                 'weeks' => $membership->weeks,
                 'location' => [
                     'id' => $membership->location->locationId,
-                    'name' => $membership->location->name
+                    'name' => $membership->location->locationName
                 ],
                 'sport' => [
                     'id' => $membership->sport->sportId,
-                    'name' => $membership->sport->name
+                    'name' => $membership->sport->sportName
                 ],
-                'created_at' => $membership->created_at,
-                'updated_at' => $membership->updated_at
             ]
         ], 200);
     }
@@ -179,21 +179,19 @@ class MembershipController extends Controller
             'time' => now()->toISOString(),
             'message' => 'Paket Langganan berhasil diperbarui',
             'data' => [
-            'id' => $membership->membershipId,
-            'name' => $membership->name,
-            'description' => $membership->description,
-            'price' => $membership->price,
-            'weeks' => $membership->weeks,
-            'location' => [
-                'id' => $membership->location->locationId,
-                'name' => $membership->location->name
-            ],
-            'sport' => [
-                'id' => $membership->sport->sportId,
-                'name' => $membership->sport->name
-            ],
-            'created_at' => $membership->created_at,
-            'updated_at' => $membership->updated_at
+                'id' => $membership->membershipId,
+                'name' => $membership->name,
+                'description' => $membership->description,
+                'price' => $membership->price,
+                'weeks' => $membership->weeks,
+                'location' => [
+                    'id' => $membership->location->locationId,
+                    'name' => $membership->location->locationName
+                ],
+                'sport' => [
+                    'id' => $membership->sport->sportId,
+                    'name' => $membership->sport->sportName
+                ],
             ]
         ], 200);
     }

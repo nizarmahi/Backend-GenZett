@@ -19,34 +19,48 @@ class MembershipController extends Controller
         $page = (int)$request->input('page', 1);
         $limit = (int)$request->input('limit', 10);
         $search = $request->input('search');
-        $sports = $request->input('sports') ? explode('.', $request->input('sports')) : [];
-        $locations = $request->input('locations') ? explode('.', $request->input('locations')) : [];
+        $sports = $request->input('sports');
+        $locations = $request->input('locations');
 
-        $memberships = Membership::with(['locations', 'sports'])->get();
+        $query = Membership::with(['locations', 'sports']);
+
+        if (!empty($search)) {
+            $query->where('name', 'like', '%' . $search . '%');
+        }
+
+        if (!empty($sports)) {
+            $query->whereHas('sports', function ($q) use ($sports) {
+                $q->where('sportName', $sports);
+            });
+        }
+
+        if (!empty($locations)) {
+            $query->whereHas('locations', function ($q) use ($locations) {
+                $q->where('locationName', $locations);
+            });
+        }
+
+        $memberships = $query->paginate($limit, ['*'], 'page', $page);
+
         return response()->json([
             'success' => true,
             'time' => now()->toISOString(),
-            'total' => $memberships->count(),
+            'total' => $memberships->total(),
             'message' => 'Data Paket Langganan berhasil diambil',
             'data' => $memberships->map(function($membership) {
                 return [
                     'membershipId' => $membership->membershipId,
                     'name' => $membership->name,
                     'description' => $membership->description,
-                    'price' => $membership->price,
+                    'discount' => $membership->price,
                     'weeks' => $membership->weeks,
-                    'locations' => [
-                        'locationId' => $membership->locations->locationId,
-                        'locationName' => $membership->locations->locationName
-                    ],
-                    'sports' => [
-                        'sportId' => $membership->sports->sportId,
-                        'sportName' => $membership->sports->sportName
-                    ],
+                    'locationName' => $membership->locations->locationName ?? null,
+                    'sportName' => $membership->sports->sportName ?? null,
                 ];
             })
         ], 200);
     }
+
 
     /**
      * Store a newly created resource in storage.
@@ -125,7 +139,7 @@ class MembershipController extends Controller
                 'membershipId' => $membership->membershipId,
                 'name' => $membership->name,
                 'description' => $membership->description,
-                'price' => $membership->price,
+                'discount' => $membership->price,
                 'weeks' => $membership->weeks,
                 'locations' => [
                     'locationId' => $membership->locations->locationId,

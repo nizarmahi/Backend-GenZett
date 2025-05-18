@@ -85,18 +85,18 @@ class MembershipController extends Controller
             'time' => now()->toISOString(),
             'message' => 'Paket Langganan berhasil dibuat',
             'data' => [
-                'id' => $membership->membershipId,
+                'membershipId' => $membership->membershipId,
                 'name' => $membership->name,
                 'description' => $membership->description,
                 'price' => $membership->price,
                 'weeks' => $membership->weeks,
                 'locations' => [
                     'id' => $membership->locations->locationId,
-                    'name' => $membership->locations->locationName
+                    'locationName' => $membership->locations->locationName
                 ],
                 'sports' => [
                     'id' => $membership->sports->sportId,
-                    'name' => $membership->sports->sportName
+                    'sportName' => $membership->sports->sportName
                 ],
             ]
         ], 201);
@@ -122,18 +122,18 @@ class MembershipController extends Controller
             'time' => now()->toISOString(),
             'message' => "Data Paket Langganan dengan ID $id ditemukan", 
             'data' => [
-                'id' => $membership->membershipId,
+                'membershipId' => $membership->membershipId,
                 'name' => $membership->name,
                 'description' => $membership->description,
                 'price' => $membership->price,
                 'weeks' => $membership->weeks,
                 'locations' => [
                     'id' => $membership->locations->locationId,
-                    'name' => $membership->locations->locationName
+                    'locationName' => $membership->locations->locationName
                 ],
                 'sports' => [
                     'id' => $membership->sports->sportId,
-                    'name' => $membership->sports->sportName
+                    'sportName' => $membership->sports->sportName
                 ],
             ]
         ], 200);
@@ -179,18 +179,18 @@ class MembershipController extends Controller
             'time' => now()->toISOString(),
             'message' => 'Paket Langganan berhasil diperbarui',
             'data' => [
-                'id' => $membership->membershipId,
+                'membershipId' => $membership->membershipId,
                 'name' => $membership->name,
                 'description' => $membership->description,
                 'price' => $membership->price,
                 'weeks' => $membership->weeks,
                 'locations' => [
                     'id' => $membership->locations->locationId,
-                    'name' => $membership->locations->locationName
+                    'locationName' => $membership->locations->locationName
                 ],
                 'sports' => [
                     'id' => $membership->sports->sportId,
-                    'name' => $membership->sports->sportName
+                    'sportName' => $membership->sports->sportName
                 ],
             ]
         ], 200);

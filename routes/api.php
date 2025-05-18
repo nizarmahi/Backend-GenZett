@@ -24,7 +24,7 @@ use App\Http\Controllers\API\JWTAuth;
 
 
 // Auth Routes
-// Auth::routes(['verify' => true]);
+Auth::routes(['verify' => true]);
 // Register routes
 Route::post('register', [AuthController::class, 'register']);
 Route::post('login', [AuthController::class, 'login']);

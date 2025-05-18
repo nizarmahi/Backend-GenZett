@@ -13,6 +13,14 @@ use Illuminate\Support\Facades\Validator;
 
 class FieldController extends Controller
 {
+    /**
+     * Tampilkan daftar lapangan
+     *
+     * Mengambil daftar lapangan dengan opsi pencarian dan filter berdasarkan lokasi dan olahraga.
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function index(Request $request){
         $page = (int)$request->input('page', 1);
         $limit = (int)$request->input('limit', 10);
@@ -20,8 +28,18 @@ class FieldController extends Controller
         $sports = $request->input('sports') ? explode('.', $request->input('sports')) : [];
         $locations = $request->input('locations') ? explode('.', $request->input('locations')) : [];
 
+        $admin = auth()->user()->admin;
+
+        if (!$admin) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Akses ditolak. Anda bukan Admin Cabang ini.'
+            ], 403);
+        }
+
         // Start query with eager loading of relationships
-        $query = Field::with(['location', 'sport', 'times']);
+        $query = Field::with(['location', 'sport', 'times'])
+            ->where('locationId', $admin->location_id);
 
         // Apply filters
         if (!empty($sports)) {
@@ -73,6 +91,15 @@ class FieldController extends Controller
             'fields' => $formattedFields
         ]);
     }
+  
+    /**
+     * Detail Lapangan
+     *
+     * Mengambil detail lapangan berdasarkan ID.
+     *
+     * @param int $id
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function show($id)
     {
         $field = Field::with(['location', 'sport', 'times'])
@@ -104,9 +131,29 @@ class FieldController extends Controller
             'field' => $formattedField
         ]);
     }
-    
+
+    /**
+     * Update Lapangan
+     *
+     * Mengupdate data lapangan berdasarkan ID.
+     *
+     * @param Request $request
+     * @param int $id
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function update(Request $request, $id)
     {
+        $field = Field::findOrFail($id);
+
+        $admin = auth()->user()->admin;
+
+        if (!$admin || $field->locationId !== $admin->location_id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki izin untuk mengubah lapangan ini.'
+            ], 403);
+        }
+
         $validator = Validator::make($request->all(), [
             'locationId' => 'required|integer',
             'sportId' => 'required|integer',
@@ -167,10 +214,26 @@ class FieldController extends Controller
         ]);
     }
 
-
+    /**
+     * Hapus Lapangan
+     *
+     * Menghapus lapangan berdasarkan ID.
+     *
+     * @param int $id
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function destroy($id)
     {
         $field = Field::find($id);
+
+        $admin = auth()->user()->admin;
+
+        if (!$admin || $field->locationId !== $admin->location_id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki izin untuk menghapus lapangan ini.'
+            ], 403);
+        }
 
         if (!$field) {
             return response()->json([
@@ -196,8 +259,25 @@ class FieldController extends Controller
         ]);
     }
 
+    /**
+     * Tambah Lapangan
+     *
+     * Menyimpan data lapangan baru.
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function store(Request $request)
     {
+        $admin = auth()->user()->admin;
+
+        if (!$admin) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Akses ditolak. Anda bukan Admin Cabang ini.'
+            ], 403);
+        }
+
         $validated = $request->validate([
             'locationId' => 'required|integer',
             'sportId' => 'required|integer',
@@ -206,6 +286,8 @@ class FieldController extends Controller
             'endHour' => 'required|string',   // format: 'HH:MM'
             'description' => 'required|string',
         ]);
+
+        $validated['locationId'] = $admin->location_id;
 
         $field = Field::create($validated);
 
@@ -232,6 +314,13 @@ class FieldController extends Controller
         ], 201);
     }
 
+    /**
+     * Mengambil semua olahraga yang tersedia
+     *
+     * Mendapatkan daftar semua olahraga yang tersedia di lapangan.
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function getAllSports()
     {
         // Get unique sports from all fields
@@ -246,6 +335,14 @@ class FieldController extends Controller
             'sports' => $sports
         ]);
     }
+
+    /**
+     * Mengambil semua lokasi yang tersedia
+     *
+     * Mendapatkan daftar semua lokasi yang tersedia di lapangan.
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function getAllLocations()
     {
         // Get unique locations from all fields

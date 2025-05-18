@@ -12,6 +12,14 @@ use Illuminate\Support\Facades\Validator;
 
 class LocationController extends Controller
 {
+    /**
+     * Tampilkan daftar lokasi
+     *
+     * Mengambil daftar lokasi dengan opsi pencarian dan filter berdasarkan olahraga.
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function index(Request $request)
     {
         $page = (int)$request->input('page', 1);
@@ -21,22 +29,22 @@ class LocationController extends Controller
 
         // Start query with eager loading of relationships
         $query = Location::with(['fields', 'fields.sport']);
-        
+
         // Apply filters
         if (!empty($sports)) {
             $query->hasSport($sports);
         }
-        
+
         if ($search) {
             $query->search($search);
         }
 
         // Get total count
         $totalLocations = $query->count();
-        
+
         // Calculate offset
         $offset = ($page - 1) * $limit;
-        
+
         // Get paginated results
         $locations = $query->skip($offset)->take($limit)->get();
 
@@ -44,20 +52,17 @@ class LocationController extends Controller
         $formattedLocations = $locations->map(function ($location) {
             // Group sports by each location
             $sports = $location->fields->pluck('sport.sportName')->unique()->values()->all();
-            
+
             return [
-                'id' => $location->locationId,
+                'locationId' => $location->locationId,
                 'img' => $location->locationPath, // Using locationPath as image path
-                'name' => $location->locationName,
+                'locationName' => $location->locationName,
                 'sports' => $sports,
                 'countLap' => $location->fields->count(), // Using field count as countLap
-                'desc' => $location->description,
-                // 'address' => $location->address ?? '', // Add address if it exists in your schema
-                'created_at' => $location->created_at,
-                'updated_at' => $location->updated_at
+                'description' => $location->description,
+                'address' => $location->address ?? '', // Add address if it exists in your schema
             ];
         });
-
         return response()->json([
             'success' => true,
             'time' => now()->toISOString(),
@@ -69,12 +74,21 @@ class LocationController extends Controller
         ]);
     }
 
+    /**
+     * Tambah lokasi baru
+     *
+     * Menyimpan lokasi baru ke dalam database.
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
             'locationName' => 'required|string|max:255',
-            'description' => 'required|string',
             'locationPath' => 'required|string|max:255',
+            'address' => 'required|string',
+            'description' => 'required|string',
         ]);
 
         if ($validator->fails()) {
@@ -85,8 +99,15 @@ class LocationController extends Controller
             ], 422);
         }
 
-        $validatedData = $validator->validated();
-        $location = Location::create($validatedData);
+        // Simpan gambar
+        $path = $request->file('locationPath')->store('locations', 'public');
+
+        $location = Location::create([
+            'locationName' => $request->locationName,
+            'description' => $request->description,
+            'address' => $request->address,
+            'locationPath' => $path, // simpan path
+        ]);
 
         return response()->json([
             'success' => true,
@@ -95,49 +116,66 @@ class LocationController extends Controller
         ], 201);
     }
 
-    public function show($id)
+    /**
+     * Detail Lokasi
+     *
+     * Mengambil detail lokasi berdasarkan ID.
+     *
+     * @param int $id
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function show($locationId)
     {
         $location = Location::with(['fields', 'fields.sport'])
-            ->find($id);
+            ->find($locationId);
 
         if (!$location) {
             return response()->json([
                 'success' => false,
-                'message' => "Lokasi dengan ID {$id} tidak ditemukan"
+                'message' => "Lokasi dengan Id {$locationId} tidak ditemukan"
             ], 404);
         }
 
         // Format the response
-        $sports = $location->fields->pluck('sport.sportName')->unique()->values()->all();
-        
+        // $sports = $location->fields->pluck('sport.sportName')->unique()->values()->all();
+
         $formattedLocation = [
-            'id' => $location->locationId,
+            'locationId' => $location->locationId,
             'img' => $location->locationPath,
-            'name' => $location->locationName,
-            'sports' => $sports,
-            'countLap' => $location->fields->count(),
-            'desc' => $location->description,
-            // 'address' => $location->address ?? '',
-            'created_at' => $location->created_at,
-            'updated_at' => $location->updated_at,
-            'fields' => $location->fields->map(function ($field) {
-                return [
-                    'id' => $field->fieldId,
-                    'name' => $field->name,
-                    'sport' => $field->sport->sportName,
-                    'description' => $field->description,
-                ];
-            })
+            'locationName' => $location->locationName,
+            // 'sports' => $sports,
+            // 'countLap' => $location->fields->count(),
+            'address' => $location->address ?? '',
+            'description' => $location->description,
+            // 'created_at' => $location->created_at,
+            // 'updated_at' => $location->updated_at,
+
+            // 'fields' => $location->fields->map(function ($field) {
+            //     return [
+            //         'id' => $field->fieldId,
+            //         'name' => $field->name,
+            //         'sports' => $field->sport->sportName,
+            //         'description' => $field->description,
+            //     ];
+            // })
         ];
 
         return response()->json([
             'success' => true,
             'time' => now()->toISOString(),
-            'message' => "Lokasi dengan ID {$id} ditemukan",
+            'message' => "Lokasi dengan ID {$locationId} ditemukan",
             'location' => $formattedLocation
         ]);
     }
 
+    /**
+     * Update Lokasi
+     *
+     * Memperbarui data lokasi berdasarkan ID.
+     *
+     * @param int $id
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function update(Request $request, $id)
     {
         $location = Location::find($id);
@@ -173,14 +211,22 @@ class LocationController extends Controller
         ]);
     }
 
-    public function destroy($id)
+    /**
+     * Hapus Lokasi
+     *
+     * Menghapus lokasi berdasarkan ID.
+     *
+     * @param int $id
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function destroy($locationId)
     {
-        $location = Location::find($id);
+        $location = Location::find($locationId);
 
         if (!$location) {
             return response()->json([
                 'success' => false,
-                'message' => "Lokasi dengan ID {$id} tidak ditemukan"
+                'message' => "Lokasi dengan Id {$locationId} tidak ditemukan"
             ], 404);
         }
 
@@ -200,6 +246,13 @@ class LocationController extends Controller
         ]);
     }
 
+    /**
+     * Mengambil semua Olahraga yang tersedia
+     *
+     * Mendapatkan daftar semua olahraga yang tersedia di lapangan.
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function getAllSports()
     {
         // Get unique sports from all fields

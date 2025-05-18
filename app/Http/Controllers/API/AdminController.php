@@ -9,6 +9,15 @@ use Illuminate\Http\Request;
 
 class AdminController extends Controller
 {
+    /**
+     * Tampilkan daftar admin
+     *
+     * Mengambil daftar admin dengan opsi pencarian dan filter berdasarkan lokasi.
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     *
+     */
     public function index(Request $request){
         $page = (int)$request->input('page', 1);
         $limit = (int)$request->input('limit', 10);
@@ -60,6 +69,14 @@ class AdminController extends Controller
             'admins' => $formattedAdmins
         ]);
     }
+    /**
+     * Detail Admin
+     *
+     * Mengambil detail admin berdasarkan ID.
+     *
+     * @param int $id
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function show($id)
     {
         $admin = Admin::with(['user', 'location'])
@@ -90,29 +107,58 @@ class AdminController extends Controller
             'admin' => $formattedAdmin
         ]);
     }
-    
+
+    /**
+     * Update Admin
+     *
+     * Mengupdate data admin berdasarkan ID.
+     *
+     * @param Request $request
+     * @param int $id
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function update(Request $request, $id)
     {
         $validated = $request->validate([
-            'locationId' => 'required|integer',
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255',
             'phone' => 'required|string|max:255',
+            'locationId' => 'required|integer',
         ]);
 
         $admin = Admin::findOrFail($id);
-        $admin->update($validated);
+        
+        // Update the Admin model (only locationId is in this table)
+        $admin->update([
+            'locationId' => $validated['locationId']
+        ]);
+        
+        // Update the associated User model
+        $user = User::findOrFail($admin->userId);
+        $user->update([
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'phone' => $validated['phone'],
+        ]);
 
         return response()->json([
             'success' => true,
+            'time' => now()->toISOString(),
             'message' => 'Admin berhasil diperbarui',
-            'admin' => $admin
+            'admin' => $admin,
+            'user' => $user
         ]);
     }
 
+    /**
+     * Hapus Admin
+     *
+     * Menghapus admin berdasarkan ID
+     *
+     */
     public function destroy($id)
     {
-        $admin = Admin::find($id);
+        $admin = Admin::with('user')->find($id);
 
         if (!$admin) {
             return response()->json([
@@ -121,7 +167,16 @@ class AdminController extends Controller
             ], 404);
         }
 
+        // Get the user ID before deleting the admin
+        $user = $admin->user;
+        
+        // Delete the admin record first (due to foreign key constraints)
         $admin->delete();
+        
+        // Delete the associated user record
+        if ($user) {
+            $user->delete();
+        }
 
         return response()->json([
             'success' => true,
@@ -130,6 +185,14 @@ class AdminController extends Controller
         ]);
     }
 
+    /**
+     * Tambah Admin
+     *
+     * Menyimpan data admin baru.
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -149,19 +212,19 @@ class AdminController extends Controller
             'phone' => $validated['phone'],
             'role' => 'admin',
         ]);
+        
         if (!$user) {
             return response()->json(['success' => false, 'message' => 'User gagal dibuat'], 500);
         }
-        
+
         $admin = Admin::create([
             'userId'     => $user->userId,
             'locationId' => $validated['locationId'],
         ]);
-        
+
         if (!$admin) {
             return response()->json(['success' => false, 'message' => 'Admin gagal dibuat'], 500);
         }
-        // dd($user, $admin); 
 
         return response()->json([
             'success' => true,

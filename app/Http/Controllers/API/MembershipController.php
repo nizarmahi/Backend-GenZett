@@ -40,7 +40,7 @@ class MembershipController extends Controller
                         'locationName' => $membership->locations->locationName
                     ],
                     'sports' => [
-                        'id' => $membership->sports->sportId,
+                        'sportId' => $membership->sports->sportId,
                         'sportName' => $membership->sports->sportName
                     ],
                 ];

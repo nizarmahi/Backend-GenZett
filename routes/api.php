@@ -12,6 +12,7 @@ use App\Http\Controllers\API\AuthController;
 use App\Http\Controllers\API\OTPController;
 use App\Http\Controllers\API\ScheduleController;
 use App\Http\Controllers\API\UserController;
+use App\Http\Controllers\API\HistoryController;
 use App\Http\Controllers\API\JWTAuth;
 
 
@@ -155,4 +156,6 @@ Route::middleware('auth:sanctum')->group(function () {
         // Route::put('/fields/{id}', [FieldController::class, 'update']);
         // Route::delete('/fields/{id}', [FieldController::class, 'destroy']);
     });
+
+    Route::get('/histories', [HistoryController::class, 'index']);
 });

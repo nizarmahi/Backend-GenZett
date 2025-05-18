@@ -30,18 +30,18 @@ class MembershipController extends Controller
             'message' => 'Data Paket Langganan berhasil diambil',
             'data' => $memberships->map(function($membership) {
                 return [
-                    'id' => $membership->membershipId,
+                    'membershipId' => $membership->membershipId,
                     'name' => $membership->name,
                     'description' => $membership->description,
                     'price' => $membership->price,
                     'weeks' => $membership->weeks,
                     'locations' => [
-                        'id' => $membership->locations->locationId,
-                        'name' => $membership->locations->locationName
+                        'locationId' => $membership->locations->locationId,
+                        'locationName' => $membership->locations->locationName
                     ],
                     'sports' => [
                         'id' => $membership->sports->sportId,
-                        'name' => $membership->sports->sportName
+                        'sportName' => $membership->sports->sportName
                     ],
                 ];
             })
@@ -91,11 +91,11 @@ class MembershipController extends Controller
                 'price' => $membership->price,
                 'weeks' => $membership->weeks,
                 'locations' => [
-                    'id' => $membership->locations->locationId,
+                    'locationId' => $membership->locations->locationId,
                     'locationName' => $membership->locations->locationName
                 ],
                 'sports' => [
-                    'id' => $membership->sports->sportId,
+                    'sportId' => $membership->sports->sportId,
                     'sportName' => $membership->sports->sportName
                 ],
             ]
@@ -128,11 +128,11 @@ class MembershipController extends Controller
                 'price' => $membership->price,
                 'weeks' => $membership->weeks,
                 'locations' => [
-                    'id' => $membership->locations->locationId,
+                    'locationId' => $membership->locations->locationId,
                     'locationName' => $membership->locations->locationName
                 ],
                 'sports' => [
-                    'id' => $membership->sports->sportId,
+                    'sportId' => $membership->sports->sportId,
                     'sportName' => $membership->sports->sportName
                 ],
             ]
@@ -185,11 +185,11 @@ class MembershipController extends Controller
                 'price' => $membership->price,
                 'weeks' => $membership->weeks,
                 'locations' => [
-                    'id' => $membership->locations->locationId,
+                    'locationId' => $membership->locations->locationId,
                     'locationName' => $membership->locations->locationName
                 ],
                 'sports' => [
-                    'id' => $membership->sports->sportId,
+                    'sportId' => $membership->sports->sportId,
                     'sportName' => $membership->sports->sportName
                 ],
             ]

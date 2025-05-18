@@ -54,18 +54,15 @@ class LocationController extends Controller
             $sports = $location->fields->pluck('sport.sportName')->unique()->values()->all();
 
             return [
-                'id' => $location->locationId,
+                'locationId' => $location->locationId,
                 'img' => $location->locationPath, // Using locationPath as image path
-                'name' => $location->locationName,
+                'locationName' => $location->locationName,
                 'sports' => $sports,
                 'countLap' => $location->fields->count(), // Using field count as countLap
-                'desc' => $location->description,
-                // 'address' => $location->address ?? '', // Add address if it exists in your schema
-                'created_at' => $location->created_at,
-                'updated_at' => $location->updated_at
+                'description' => $location->description,
+                'address' => $location->address ?? '', // Add address if it exists in your schema
             ];
         });
-
         return response()->json([
             'success' => true,
             'time' => now()->toISOString(),
@@ -89,8 +86,9 @@ class LocationController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'locationName' => 'required|string|max:255',
-            'description' => 'required|string',
             'locationPath' => 'required|string|max:255',
+            'address' => 'required|string',
+            'description' => 'required|string',
         ]);
 
         if ($validator->fails()) {
@@ -101,8 +99,15 @@ class LocationController extends Controller
             ], 422);
         }
 
-        $validatedData = $validator->validated();
-        $location = Location::create($validatedData);
+        // Simpan gambar
+        $path = $request->file('locationPath')->store('locations', 'public');
+
+        $location = Location::create([
+            'locationName' => $request->locationName,
+            'description' => $request->description,
+            'address' => $request->address,
+            'locationPath' => $path, // simpan path
+        ]);
 
         return response()->json([
             'success' => true,
@@ -119,45 +124,46 @@ class LocationController extends Controller
      * @param int $id
      * @return \Illuminate\Http\JsonResponse
      */
-    public function show($id)
+    public function show($locationId)
     {
         $location = Location::with(['fields', 'fields.sport'])
-            ->find($id);
+            ->find($locationId);
 
         if (!$location) {
             return response()->json([
                 'success' => false,
-                'message' => "Lokasi dengan ID {$id} tidak ditemukan"
+                'message' => "Lokasi dengan Id {$locationId} tidak ditemukan"
             ], 404);
         }
 
         // Format the response
-        $sports = $location->fields->pluck('sport.sportName')->unique()->values()->all();
+        // $sports = $location->fields->pluck('sport.sportName')->unique()->values()->all();
 
         $formattedLocation = [
-            'id' => $location->locationId,
+            'locationId' => $location->locationId,
             'img' => $location->locationPath,
-            'name' => $location->locationName,
-            'sports' => $sports,
-            'countLap' => $location->fields->count(),
-            'desc' => $location->description,
-            // 'address' => $location->address ?? '',
-            'created_at' => $location->created_at,
-            'updated_at' => $location->updated_at,
-            'fields' => $location->fields->map(function ($field) {
-                return [
-                    'id' => $field->fieldId,
-                    'name' => $field->name,
-                    'sport' => $field->sport->sportName,
-                    'description' => $field->description,
-                ];
-            })
+            'locationName' => $location->locationName,
+            // 'sports' => $sports,
+            // 'countLap' => $location->fields->count(),
+            'address' => $location->address ?? '',
+            'description' => $location->description,
+            // 'created_at' => $location->created_at,
+            // 'updated_at' => $location->updated_at,
+
+            // 'fields' => $location->fields->map(function ($field) {
+            //     return [
+            //         'id' => $field->fieldId,
+            //         'name' => $field->name,
+            //         'sports' => $field->sport->sportName,
+            //         'description' => $field->description,
+            //     ];
+            // })
         ];
 
         return response()->json([
             'success' => true,
             'time' => now()->toISOString(),
-            'message' => "Lokasi dengan ID {$id} ditemukan",
+            'message' => "Lokasi dengan ID {$locationId} ditemukan",
             'location' => $formattedLocation
         ]);
     }
@@ -213,14 +219,14 @@ class LocationController extends Controller
      * @param int $id
      * @return \Illuminate\Http\JsonResponse
      */
-    public function destroy($id)
+    public function destroy($locationId)
     {
-        $location = Location::find($id);
+        $location = Location::find($locationId);
 
         if (!$location) {
             return response()->json([
                 'success' => false,
-                'message' => "Lokasi dengan ID {$id} tidak ditemukan"
+                'message' => "Lokasi dengan Id {$locationId} tidak ditemukan"
             ], 404);
         }
 

@@ -22,7 +22,7 @@ class MembershipController extends Controller
         $sports = $request->input('sports') ? explode('.', $request->input('sports')) : [];
         $locations = $request->input('locations') ? explode('.', $request->input('locations')) : [];
 
-        $memberships = Membership::with(['location', 'sport'])->get();
+        $memberships = Membership::with(['locations', 'sports'])->get();
         return response()->json([
             'success' => true,
             'time' => now()->toISOString(),
@@ -35,13 +35,13 @@ class MembershipController extends Controller
                     'description' => $membership->description,
                     'price' => $membership->price,
                     'weeks' => $membership->weeks,
-                    'location' => [
-                    'id' => $membership->location->locationId,
-                    'name' => $membership->location->locationName
+                    'locations' => [
+                        'id' => $membership->locations->locationId,
+                        'name' => $membership->locations->locationName
                     ],
-                    'sport' => [
-                    'id' => $membership->sport->sportId,
-                    'name' => $membership->sport->sportName
+                    'sports' => [
+                        'id' => $membership->sports->sportId,
+                        'name' => $membership->sports->sportName
                     ],
                 ];
             })
@@ -71,7 +71,7 @@ class MembershipController extends Controller
 
         $membership = Membership::create($request->all());
 
-        $membership = Membership::with(['location', 'sport'])->find($membership->membershipId);
+        $membership = Membership::with(['locations', 'sports'])->find($membership->membershipId);
         
         if (!$membership) {
             return response()->json([
@@ -90,13 +90,13 @@ class MembershipController extends Controller
                 'description' => $membership->description,
                 'price' => $membership->price,
                 'weeks' => $membership->weeks,
-                'location' => [
-                    'id' => $membership->location->locationId,
-                    'name' => $membership->location->locationName
+                'locations' => [
+                    'id' => $membership->locations->locationId,
+                    'name' => $membership->locations->locationName
                 ],
-                'sport' => [
-                    'id' => $membership->sport->sportId,
-                    'name' => $membership->sport->sportName
+                'sports' => [
+                    'id' => $membership->sports->sportId,
+                    'name' => $membership->sports->sportName
                 ],
             ]
         ], 201);
@@ -108,7 +108,7 @@ class MembershipController extends Controller
     public function show(string $id)
     {
         
-        $membership = Membership::with(['location', 'sport'])->find($id);
+        $membership = Membership::with(['locations', 'sports'])->find($id);
 
         if (!$membership) {
             return response()->json([
@@ -127,13 +127,13 @@ class MembershipController extends Controller
                 'description' => $membership->description,
                 'price' => $membership->price,
                 'weeks' => $membership->weeks,
-                'location' => [
-                    'id' => $membership->location->locationId,
-                    'name' => $membership->location->locationName
+                'locations' => [
+                    'id' => $membership->locations->locationId,
+                    'name' => $membership->locations->locationName
                 ],
-                'sport' => [
-                    'id' => $membership->sport->sportId,
-                    'name' => $membership->sport->sportName
+                'sports' => [
+                    'id' => $membership->sports->sportId,
+                    'name' => $membership->sports->sportName
                 ],
             ]
         ], 200);
@@ -172,7 +172,7 @@ class MembershipController extends Controller
 
         $membership->update($request->all());
 
-        $membership = Membership::with(['location', 'sport'])->find($membership->membershipId);
+        $membership = Membership::with(['locations', 'sports'])->find($membership->membershipId);
 
         return response()->json([
             'success' => true,
@@ -184,13 +184,13 @@ class MembershipController extends Controller
                 'description' => $membership->description,
                 'price' => $membership->price,
                 'weeks' => $membership->weeks,
-                'location' => [
-                    'id' => $membership->location->locationId,
-                    'name' => $membership->location->locationName
+                'locations' => [
+                    'id' => $membership->locations->locationId,
+                    'name' => $membership->locations->locationName
                 ],
-                'sport' => [
-                    'id' => $membership->sport->sportId,
-                    'name' => $membership->sport->sportName
+                'sports' => [
+                    'id' => $membership->sports->sportId,
+                    'name' => $membership->sports->sportName
                 ],
             ]
         ], 200);

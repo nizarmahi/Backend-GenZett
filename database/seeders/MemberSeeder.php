@@ -23,6 +23,7 @@ class MemberSeeder extends Seeder
                 DB::table('memberships')->insert([
                     'locationId' => $index + 1,
                     'sportId' => $index + 1,
+                    'locationId' => $index + 1,
                     'name' => $membership['name'],
                     'description' => $membership['description'],
                     'price' => $membership['price'],

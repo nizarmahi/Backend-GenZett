@@ -44,6 +44,10 @@ php artisan serve
 API aktif di: `http://localhost:8000`  
 Cek endpoint di: `routes/api.php`
 
+📑 Dokumentasi API
+Dokumentasi lengkap endpoint API tersedia di:
+👉 `http://localhost:8000/api/documentation`
+
 ## 🧩 Fitur Utama
 - 🔐 Autentikasi (Sanctum): Login, Register, Logout
 - 👤 CRUD untuk: User, Field, Reservation, Sport

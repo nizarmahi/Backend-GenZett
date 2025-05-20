@@ -17,11 +17,11 @@ class Membership extends Model
     ];
     protected $table = 'memberships';
 
-    public function sports()
+    public function sport()
     {
         return $this->belongsTo(Sport::class, 'sportId', 'sportId');
     }
-    public function locations()
+    public function location()
     {
         return $this->belongsTo(Location::class, 'locationId', 'locationId');
     }

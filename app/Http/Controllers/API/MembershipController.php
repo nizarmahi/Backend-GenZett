@@ -86,14 +86,14 @@ class MembershipController extends Controller
         $membership = Membership::create($request->all());
 
         $membership = Membership::with(['locations', 'sports'])->find($membership->membershipId);
-        
+
         if (!$membership) {
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to create membership'
             ], 500);
         }
-        
+
         return response()->json([
             'status' => 'success',
             'time' => now()->toISOString(),
@@ -121,7 +121,7 @@ class MembershipController extends Controller
      */
     public function show(string $id)
     {
-        
+
         $membership = Membership::with(['locations', 'sports'])->find($id);
 
         if (!$membership) {
@@ -134,7 +134,7 @@ class MembershipController extends Controller
         return response()->json([
             'success' => true,
             'time' => now()->toISOString(),
-            'message' => "Data Paket Langganan dengan ID $id ditemukan", 
+            'message' => "Data Paket Langganan dengan ID $id ditemukan",
             'data' => [
                 'membershipId' => $membership->membershipId,
                 'name' => $membership->name,
@@ -219,7 +219,7 @@ class MembershipController extends Controller
 
         if (!$membership) {
             return response()->json([
-                'success' => false, 
+                'success' => false,
                 'message' => "Paket Langganan dengan ID $id tidak ditemukan"
             ], 404);
         }
@@ -227,7 +227,7 @@ class MembershipController extends Controller
         $membership->delete();
 
         return response()->json([
-            'success' => true, 
+            'success' => true,
             'time' => now()->toISOString(),
             'message' => 'Paket Langganan berhasil dihapus'
         ], 200);

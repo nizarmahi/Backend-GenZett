@@ -32,7 +32,9 @@ class LocationController extends Controller
 
         // Apply filters
         if (!empty($sports)) {
-            $query->hasSport($sports);
+            $query->whereHas('fields.sport', function ($q) use ($sports) {
+                $q->whereIn('sportName', $sports); // atau key lain sesuai field kamu
+            });
         }
 
         if ($search) {
@@ -260,5 +262,4 @@ class LocationController extends Controller
             'sports' => $sports
         ]);
     }
-
 }

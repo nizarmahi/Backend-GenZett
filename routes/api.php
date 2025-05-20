@@ -1,19 +1,21 @@
 <?php
 
-use App\Http\Controllers\API\AdminController;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
-use App\Http\Controllers\API\SportController;
-use App\Http\Controllers\API\LocationController;
-use App\Http\Controllers\API\FieldController;
-use App\Http\Controllers\API\ReservationController;
-use App\Http\Controllers\API\AuthController;
-use App\Http\Controllers\API\OTPController;
-use App\Http\Controllers\API\ScheduleController;
-use App\Http\Controllers\API\UserController;
-use App\Http\Controllers\API\JWTAuth;
+use Illuminate\Support\Facades\Route;
 
+use App\Http\Controllers\API\AdminController;
+use App\Http\Controllers\API\AuthController;
+use App\Http\Controllers\API\FieldController;
+use App\Http\Controllers\API\JWTAuth;
+use App\Http\Controllers\API\LocationController;
+use App\Http\Controllers\API\MembershipController;
+use App\Http\Controllers\API\OTPController;
+use App\Http\Controllers\API\PaymentController;
+use App\Http\Controllers\API\ReservationController;
+use App\Http\Controllers\API\ScheduleController;
+use App\Http\Controllers\API\SportController;
+use App\Http\Controllers\API\UserController;
 
 /*
 |--------------------------------------------------------------------------
@@ -62,16 +64,32 @@ Route::group(['prefix' => 'fields'], function () {
 Route::group(['prefix' => 'reservations'], function () {
     Route::get('/location', [ReservationController::class, 'getAllLocations']);
     Route::get('/sport', [ReservationController::class, 'getSports']);
+    Route::get('/sport/{locationId}', [ReservationController::class, 'getSportsByLocation']);
 
     Route::get('/', [ReservationController::class, 'index']);
     Route::post('/', [ReservationController::class, 'store']);
     Route::get('/{id}', [ReservationController::class, 'show']);
     Route::put('/{id}', [ReservationController::class, 'update']);
-    Route::delete('/{id}', [ReservationController::class, 'destroy']);
     Route::put('/{id}/status', [ReservationController::class, 'updatePaymentStatus']);
     Route::put('/{id}/cancel', [ReservationController::class, 'cancel']);
     Route::put('/{id}/confirm', [ReservationController::class, 'confirmPayment']);
-    Route::get('/{id}/schedules', [ReservationController::class, 'getScheduleByLocation']);
+    Route::get('/{locationId}/schedules', [ReservationController::class, 'getScheduleByLocation']);
+});
+// Payment API routes
+Route::group(['prefix' => 'payments'], function () {
+    Route::get('/', [PaymentController::class, 'index']);
+    Route::post('/', [PaymentController::class, 'store']);
+    Route::get('/{id}', [PaymentController::class, 'show']);
+    Route::put('/{id}', [PaymentController::class, 'update']);
+    Route::delete('/{id}', [PaymentController::class, 'destroy']);
+});
+// Membership API routes
+Route::group(['prefix' => 'memberships'], function () {
+    Route::get('/', [MembershipController::class, 'index']);
+    Route::post('/', [MembershipController::class, 'store']);
+    Route::get('/{id}', [MembershipController::class, 'show']);
+    Route::put('/{id}', [MembershipController::class, 'update']);
+    Route::delete('/{id}', [MembershipController::class, 'destroy']);
 });
 // Admin API routes
 Route::group(['prefix' => 'admins'], function () {

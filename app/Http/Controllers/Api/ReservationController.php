@@ -39,7 +39,7 @@ class ReservationController extends Controller
             'details.time',
             'user'
         ])
-        ->orderByDesc('created_at');
+            ->orderByDesc('created_at');
 
         if (!empty($paymentStatus)) {
             $query->where('paymentStatus', $paymentStatus);
@@ -228,10 +228,11 @@ class ReservationController extends Controller
         $conflicts = [];
         foreach ($details as $detail) {
             foreach ($detail['timeIds'] as $timeId) {
-                $exists = ReservationDetail::where('fieldId', $detail['fieldId'])
-                    ->where('timeId', $timeId)
-                    ->where('date', $detail['date'])
-                    ->where('status', 'booked')
+                $exists = ReservationDetail::join('times', 'reservation_details.timeId', '=', 'times.timeId')
+                    ->where('reservation_details.fieldId', $detail['fieldId'])
+                    ->where('reservation_details.timeId', $timeId)
+                    ->where('reservation_details.date', $detail['date'])
+                    ->where('times.status', 'booked')
                     ->first();
 
                 if ($exists) {
@@ -268,7 +269,6 @@ class ReservationController extends Controller
                     'fieldId' => $detail['fieldId'],
                     'timeId' => $timeId,
                     'date' => $detail['date'],
-                    'status' => '',
                 ]);
             }
         }

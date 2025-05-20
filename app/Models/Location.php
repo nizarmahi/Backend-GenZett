@@ -17,7 +17,10 @@ class Location extends Model
     {
         return $this->hasMany(Field::class, 'locationId');
     }
-
+    public function memberships()
+    {
+        return $this->hasMany(Membership::class, 'locationId');
+    }
     public function admins()
     {
         return $this->hasMany(Admin::class, 'locationId');
@@ -33,5 +36,4 @@ class Location extends Model
         return $query->where('locationName', 'like', '%' . $term . '%')
                     ->orWhere('description', 'like', '%' . $term . '%');
     }
-
 }

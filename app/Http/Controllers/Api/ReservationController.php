@@ -19,9 +19,9 @@ use Illuminate\Support\Facades\DB;
 class ReservationController extends Controller
 {
     /**
-     * Tampilkan Semua Reservasi
+     * Tampilkan Semua Reservasi berdasarkan lokasi
      *
-     * Mengambil semua reservasi dengan detail lapangan dan waktu.
+     * Mengambil semua reservasi di lokasi tertentu dengan detail lapangan dan waktu.
      *
      * @return \Illuminate\Http\JsonResponse
      */
@@ -84,6 +84,14 @@ class ReservationController extends Controller
             })
         ]);
     }
+
+    /**
+     * Ambil Reservasi di lokasi tertentu
+     *
+     * Mengambil semua reservasi berdasarkan lokasi dan olahraga.
+     *
+     */
+    public function getReservationsByLocation(Request $request, $locationId) {}
 
     /**
      * Buat Reservasi Baru
@@ -470,103 +478,6 @@ class ReservationController extends Controller
     }
 
     /**
-     * Hapus Reservasi
-     *
-     * Menghapus reservasi berdasarkan ID.
-     *
-     * @urlParam id integer required The ID of the reservation to delete. Example: 1
-     *
-     * @response {
-     *   "success": true,
-     *   "message": "Reservasi berhasil dihapus"
-     * }
-     *
-     * @response 404 {
-     *   "success": false,
-     *   "message": "Reservasi tidak ditemukan"
-     * }
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function destroy($id)
-    {
-        $reservation = Reservation::find($id);
-
-        if (!$reservation) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Reservasi tidak ditemukan. Hapus Reservasi'
-            ], 404);
-        }
-
-        // Ubah status time menjadi 'available'
-        foreach ($reservation->details as $detail) {
-            $time = Time::find($detail->timeId);
-            if ($time) {
-                $time->status = 'available';
-                $time->save();
-            }
-        }
-
-        // Hapus detail terlebih dahulu karena relasi hasMany
-        $reservation->details()->delete();
-
-        // Hapus reservasi
-        $reservation->delete();
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Reservasi berhasil dihapus'
-        ]);
-    }
-
-    /**
-     * Filter Reservasi
-     *
-     * Filter reservasi berdasarkan userId, fieldId, dan date.
-     *
-     * @queryParam userId integer optional Filter by user ID. Example: 1
-     * @queryParam fieldId integer optional Filter by field ID. Example: 2
-     * @queryParam date string optional Filter by date in Y-m-d format. Example: 2025-05-15
-     *
-     * @response {
-     *   "success": true,
-     *   "message": "Filter reservasi berhasil diambil",
-     *   "data": []
-     * }
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function filter(Request $request)
-    {
-        $query = Reservation::with(['details.field', 'details.time', 'user']);
-
-        if ($request->has('userId')) {
-            $query->where('userId', $request->userId);
-        }
-
-        if ($request->has('fieldId')) {
-            $query->whereHas('details', function ($q) use ($request) {
-                $q->where('fieldId', $request->fieldId);
-            });
-        }
-
-        if ($request->has('date')) {
-            $query->whereHas('details', function ($q) use ($request) {
-                $q->where('date', $request->date);
-            });
-        }
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Filtered reservations retrieved successfully',
-            'data' => $query->get(),
-        ]);
-    }
-
-    /**
      * Update status pembayaran reservasi
      *
      * Mengubah status pembayaran reservasi berdasarkan ID.
@@ -835,6 +746,36 @@ class ReservationController extends Controller
         }
     }
     /**
+     * Ambil Semua Jadwal Reservasi di Lokasi Tertentu
+     *
+     * Mengambil semua jadwal reservasi di lokasi tertentu dengan filter berdasarkan olahraga.
+     *
+     * @urlParam locationId integer required The ID of the location. Example: 1
+     */
+    public function getSportsByLocation($locationId)
+    {
+        try {
+            $sports = DB::table('fields')
+                ->join('sports', 'fields.sportId', '=', 'sports.sportId')
+                ->where('fields.locationId', $locationId)
+                ->select('sports.sportId', 'sportName')
+                ->distinct()
+                ->get();
+
+            return response()->json([
+                'success' => true,
+                'data' => $sports,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengambil data olahraga.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
      * Ambil semua jadwal reservasi di lokasi tertentu
      *
      * @queryParam locationId integer required The ID of the location. Example: 1
@@ -846,7 +787,11 @@ class ReservationController extends Controller
         try {
             $startDate = now()->format('Y-m-d');
             $endDate = now()->addDays(7)->format('Y-m-d');
-            $sportId = $request->query('sportId'); // Ambil sportId dari query
+
+            $dates = collect();
+            $current = strtotime($startDate);
+            $startDate = now()->format('Y-m-d');
+            $endDate = now()->addDays(7)->format('Y-m-d');
 
             $dates = collect();
             $current = strtotime($startDate);
@@ -857,14 +802,37 @@ class ReservationController extends Controller
                 $current = strtotime('+1 day', $current);
             }
 
-            $fieldQuery = DB::table('fields')
-                ->where('locationId', $locationId);
+            $sportName = $request->query('sportName');
 
-            if ($sportId) {
-                $fieldQuery->where('sportId', $sportId);
+            // Ambil semua sportName yang tersedia di lokasi tersebut
+            $availableSports = DB::table('fields')
+                ->join('sports', 'fields.sportId', '=', 'sports.sportId')
+                ->where('fields.locationId', $locationId)
+                ->select('sports.sportId', 'sportName')
+                ->distinct()
+                ->get();
+
+            // Jika sportName tidak diisi atau tidak ditemukan
+            $matchedSport = $availableSports->first(function ($sport) use ($sportName) {
+                return strtolower($sport->sportName) === strtolower($sportName);
+            });
+
+            if (!$sportName || !$matchedSport) {
+                return response()->json([
+                    'success' => true,
+                    'locationId' => $locationId,
+                    'available_sports' => $availableSports->pluck('sportName'),
+                    'fields' => [], // tidak ada jadwal
+                ]);
             }
 
-            $fields = $fieldQuery->get();
+            $sportId = $matchedSport->sportId;
+
+            // Ambil semua field berdasarkan locationId dan sportId
+            $fields = DB::table('fields')
+                ->where('locationId', $locationId)
+                ->where('sportId', $sportId)
+                ->get();
 
             $scheduleData = [];
 
@@ -911,7 +879,7 @@ class ReservationController extends Controller
                 'start_date' => $startDate,
                 'end_date' => $endDate,
                 'locationId' => $locationId,
-                'sportId' => $sportId,
+                'sportName' => $sportName,
                 'fields' => $scheduleData,
             ]);
         } catch (\Exception $e) {

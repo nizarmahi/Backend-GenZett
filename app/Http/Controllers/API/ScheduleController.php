@@ -33,7 +33,8 @@ class ScheduleController extends Controller
                 // 'sports.sportName as sport',
                 // 'locations.locationName as location',
                 'reservations.paymentStatus'
-            ]);
+            ])
+            ->where('reservations.paymentStatus', 'pending'||'complete'||'dp');
 
         // Filter by sport
         if ($request->has('sportId')) {

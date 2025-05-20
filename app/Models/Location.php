@@ -22,9 +22,16 @@ class Location extends Model
     {
         return $this->hasMany(Admin::class, 'locationId');
     }
-
-    public function memberships()
+    public function scopeHasSport($query, array $sports)
     {
-        return $this->hasMany(Membership::class, 'locationId');
+        return $query->whereHas('fields.sport', function ($q) use ($sports) {
+            $q->whereIn('sportName', $sports);
+        });
     }
+    public function scopeSearch($query, $term)
+    {
+        return $query->where('locationName', 'like', '%' . $term . '%')
+                    ->orWhere('description', 'like', '%' . $term . '%');
+    }
+
 }

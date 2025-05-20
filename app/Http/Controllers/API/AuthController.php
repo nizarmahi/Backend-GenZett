@@ -71,10 +71,25 @@ class AuthController extends Controller
 
         $user = Auth::user();
 
+        // Tambahkan custom claims termasuk role
+        $customClaims = [
+            'role' => $user->role,
+            'user_id' => $user->userId,
+            'email' => $user->email
+        ];
+
+        // Generate token dengan custom claims
+        $tokenWithClaims = JWTAuth::claims($customClaims)->attempt($credentials);
+
         return response()->json([
             'message' => 'Login berhasil',
-            'user' => $user,
-            'token' => $token
+            'user' => [
+                'id' => $user->userId,
+                'email' => $user->email,
+                'name' => $user->name,
+                'role' => $user->role,
+            ],
+            'token' => $tokenWithClaims // Gunakan token yang sudah include claims
         ]);
     }
 

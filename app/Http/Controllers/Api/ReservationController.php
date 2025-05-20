@@ -27,27 +27,61 @@ class ReservationController extends Controller
      */
     public function index(Request $request)
     {
-        $locationId = $request->query('locationId');
+        $page = (int) $request->input('page', 1);
+        $limit = (int) $request->input('limit', 10);
+        $search = $request->input('search');
+        $paymentStatus = $request->input('paymentStatus');
+        $date = $request->input('date');
 
-        $reservations = Reservation::with([
+        $query = Reservation::with([
             'details.field.location',
             'details.field.sport',
             'details.time',
             'user'
         ])
-            // Filter hanya jika locationId diberikan
-            ->when($locationId, function ($query) use ($locationId) {
-                $query->whereHas('details.field.location', function ($q) use ($locationId) {
-                    $q->where('locationId', $locationId);
-                });
-            })
-            ->orderByDesc('created_at')
-            ->get();
+        ->orderByDesc('created_at');
+
+        if (!empty($paymentStatus)) {
+            $query->where('paymentStatus', $paymentStatus);
+        }
+
+        if (!empty($search)) {
+            $query->where('name', 'like', '%' . $search . '%');
+        }
+
+        if (!empty($date)) {
+            $query->whereHas('details', function ($q) use ($date) {
+                $q->where('date', $date);
+            });
+        }
+
+        $reservations = $query->paginate($limit, ['*'], 'page', $page);
 
         return response()->json([
             'success' => true,
-            'message' => 'Reservasi berhasil diambil',
-            'data' => $reservations
+            'message' => 'Semua reservasi berhasil diambil',
+            'data' => $reservations->map(function ($reservation) {
+                return [
+                    'reservationId' => $reservation->reservationId,
+                    // 'userId' => $reservation->userId,
+                    'name' => $reservation->name,
+                    'paymentStatus' => $reservation->paymentStatus,
+                    'total' => $reservation->total,
+                    'created_at' => $reservation->created_at,
+                    'status' => 'upcoming',
+                    // 'updated_at' => $reservation->updated_at,
+                    'details' => $reservation->details->map(function ($detail) {
+                        return [
+                            // 'detailId' => $detail->detailId,
+                            // 'reservationId' => $detail->reservationId,
+                            'fieldName' => $detail->field->name,
+                            'time' => $detail->time,
+                            'date' => $detail->date,
+                            // 'status' => $detail->status,
+                        ];
+                    })
+                ];
+            })
         ]);
     }
 

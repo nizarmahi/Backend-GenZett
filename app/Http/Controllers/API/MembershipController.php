@@ -3,243 +3,233 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
 use App\Models\Membership;
 use App\Models\Location;
 use App\Models\Sport;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
 class MembershipController extends Controller
 {
     /**
-     * Tampilkan daftar membership
-     *
-     * Mengambil daftar membership berdasarkan filter lokasi dan olahraga.
-     *
-     * @param Request $request
-     * @return \Illuminate\Http\JsonResponse
+     * Display a listing of the resource.
      */
     public function index(Request $request)
     {
-        $membership = Membership::with(['location', 'sport']);
-
-        $page = (int) $request->input('page', 1);
-        $limit = (int) $request->input('limit', 9);
-
+        $page = (int)$request->input('page', 1);
+        $limit = (int)$request->input('limit', 10);
         $search = $request->input('search');
-        $locationNames = $request->input('locations') ? explode('.', $request->input('locations')) : [];
-        $sportNames = $request->input('sports') ? explode('.', $request->input('sports')) : [];
+        $sports = $request->input('sports');
+        $locations = $request->input('locations');
 
-        if (!empty($locationNames)) {
-            $membership->whereHas('location', function ($q) use ($locationNames) {
-                $q->whereIn('locationName', $locationNames);
-            });
-        }
-
-        if (!empty($sportNames)) {
-            $membership->whereHas('sport', function ($q) use ($sportNames) {
-                $q->whereIn('sportName', $sportNames);
-            });
-        }
+        $query = Membership::with(['locations', 'sports']);
 
         if (!empty($search)) {
-            $membership->where(function ($query) use ($search) {
-                $query->where('name', 'like', "%$search%")
-                    ->orWhere('price', 'like', "%$search%");
+            $query->where('name', 'like', '%' . $search . '%');
+        }
+
+        if (!empty($sports)) {
+            $query->whereHas('sports', function ($q) use ($sports) {
+                $q->where('sportName', $sports);
             });
         }
 
-        $totalMembership = $membership->count();
-        $offset = ($page - 1) * $limit;
-        $memberships = $membership->skip($offset)->take($limit)->get();
+        if (!empty($locations)) {
+            $query->whereHas('locations', function ($q) use ($locations) {
+                $q->where('locationName', $locations);
+            });
+        }
 
-        $formattedMemberships = $memberships->map(function ($membership) {
-            return [
-                'id' => $membership->membershipId,
-                'name' => $membership->name,
-                'price' => $membership->price,
-                'location' => $membership->location?->locationName ?? 'Tidak diketahui',
-                'sport' => $membership->sport?->sportName ?? 'Tidak diketahui',
-                'description' => $membership->description,
-                'created_at' => $membership->created_at,
-                'updated_at' => $membership->updated_at,
-            ];
-        });
+        $memberships = $query->paginate($limit, ['*'], 'page', $page);
 
         return response()->json([
-            'total' => $totalMembership,
-            'page' => $page,
-            'limit' => $limit,
-            'memberships' => $formattedMemberships,
-        ]);
+            'success' => true,
+            'time' => now()->toISOString(),
+            'total' => $memberships->total(),
+            'message' => 'Data Paket Langganan berhasil diambil',
+            'data' => $memberships->map(function($membership) {
+                return [
+                    'membershipId' => $membership->membershipId,
+                    'name' => $membership->name,
+                    'description' => $membership->description,
+                    'discount' => $membership->price,
+                    'weeks' => $membership->weeks,
+                    'locationName' => $membership->locations->locationName ?? null,
+                    'sportName' => $membership->sports->sportName ?? null,
+                ];
+            })
+        ], 200);
     }
 
+
     /**
-     * Simpan membership baru
-     *
-     * Menyimpan data membership baru ke dalam database.
-     *
-     * @param Request $request
-     * @return \Illuminate\Http\JsonResponse
+     * Store a newly created resource in storage.
      */
     public function store(Request $request)
     {
-        // Validate the request
         $validator = Validator::make($request->all(), [
-            'membershipName' => 'required|string|max:255',
-            'membershipPrice' => 'required|numeric',
             'locationId' => 'required|exists:locations,locationId',
             'sportId' => 'required|exists:sports,sportId',
+            'name' => 'required|string|max:25',
+            'description' => 'required|string',
+            'price' => 'required|integer|min:0',
+            'weeks' => 'required|integer|min:1',
         ]);
 
         if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
+            return response()->json([
+                'success' => false,
+                'message' => $validator->errors()
+            ], 422);
         }
 
-        // Create a new membership
-        $membership = Membership::create([
-            'membershipName' => $request->input('membershipName'),
-            'membershipPrice' => $request->input('membershipPrice'),
-            'locationId' => $request->input('locationId'),
-            'sportId' => $request->input('sportId'),
-        ]);
+        $membership = Membership::create($request->all());
 
-        return response()->json($membership, 201);
+        $membership = Membership::with(['locations', 'sports'])->find($membership->membershipId);
+
+        if (!$membership) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to create membership'
+            ], 500);
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'time' => now()->toISOString(),
+            'message' => 'Paket Langganan berhasil dibuat',
+            'data' => [
+                'membershipId' => $membership->membershipId,
+                'name' => $membership->name,
+                'description' => $membership->description,
+                'price' => $membership->price,
+                'weeks' => $membership->weeks,
+                'locations' => [
+                    'locationId' => $membership->locations->locationId,
+                    'locationName' => $membership->locations->locationName
+                ],
+                'sports' => [
+                    'sportId' => $membership->sports->sportId,
+                    'sportName' => $membership->sports->sportName
+                ],
+            ]
+        ], 201);
     }
-    /**
-     * Update membership
-     *
-     * Mengupdate data membership berdasarkan ID.
-     *
-     * @param Request $request
-     * @param int $id
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function update(Request $request, $id)
-    {
-        // Validate the request
-        $validator = Validator::make($request->all(), [
-            'membershipName' => 'sometimes|required|string|max:255',
-            'membershipPrice' => 'sometimes|required|numeric',
-            'locationId' => 'sometimes|required|exists:locations,locationId',
-            'sportId' => 'sometimes|required|exists:sports,sportId',
-        ]);
 
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
+    /**
+     * Display the specified resource.
+     */
+    public function show(string $id)
+    {
+
+        $membership = Membership::with(['locations', 'sports'])->find($id);
+
+        if (!$membership) {
+            return response()->json([
+                'success' => false,
+                'message' => "Paket Langganan dengan ID $id tidak ditemukan"
+            ], 404);
         }
 
-        // Find the membership by ID
+        return response()->json([
+            'success' => true,
+            'time' => now()->toISOString(),
+            'message' => "Data Paket Langganan dengan ID $id ditemukan",
+            'data' => [
+                'membershipId' => $membership->membershipId,
+                'name' => $membership->name,
+                'description' => $membership->description,
+                'discount' => $membership->price,
+                'weeks' => $membership->weeks,
+                'locations' => [
+                    'locationId' => $membership->locations->locationId,
+                    'locationName' => $membership->locations->locationName
+                ],
+                'sports' => [
+                    'sportId' => $membership->sports->sportId,
+                    'sportName' => $membership->sports->sportName
+                ],
+            ]
+        ], 200);
+    }
+
+    /**
+     * Update the specified resource in storage.
+     */
+    public function update(Request $request, string $id)
+    {
         $membership = Membership::find($id);
 
         if (!$membership) {
-            return response()->json(['message' => 'Membership tidak ditemukan'], 404);
+            return response()->json([
+                'success' => false,
+                'time' => now()->toISOString(),
+                'message' => "Paket Langganan dengan ID $id tidak ditemukan"
+            ], 404);
         }
 
-        // Update the membership
+        $validator = Validator::make($request->all(), [
+            'locationId' => 'exists:locations,locationId',
+            'sportId' => 'exists:sports,sportId',
+            'name' => 'string|max:25',
+            'description' => 'string',
+            'price' => 'integer|min:0',
+            'weeks' => 'integer|min:1',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => $validator->errors()
+            ], 422);
+        }
+
         $membership->update($request->all());
 
-        return response()->json($membership);
+        $membership = Membership::with(['locations', 'sports'])->find($membership->membershipId);
+
+        return response()->json([
+            'success' => true,
+            'time' => now()->toISOString(),
+            'message' => 'Paket Langganan berhasil diperbarui',
+            'data' => [
+                'membershipId' => $membership->membershipId,
+                'name' => $membership->name,
+                'description' => $membership->description,
+                'price' => $membership->price,
+                'weeks' => $membership->weeks,
+                'locations' => [
+                    'locationId' => $membership->locations->locationId,
+                    'locationName' => $membership->locations->locationName
+                ],
+                'sports' => [
+                    'sportId' => $membership->sports->sportId,
+                    'sportName' => $membership->sports->sportName
+                ],
+            ]
+        ], 200);
     }
+
     /**
-     * Hapus membership
-     *
-     * Menghapus membership berdasarkan ID.
-     *
-     * @param int $id
-     * @return \Illuminate\Http\JsonResponse
+     * Remove the specified resource from storage.
      */
-    public function destroy($id)
+    public function destroy(string $id)
     {
-        // Find the membership by ID
         $membership = Membership::find($id);
 
         if (!$membership) {
-            return response()->json(['message' => 'Membership tidak detiemukan'], 404);
+            return response()->json([
+                'success' => false,
+                'message' => "Paket Langganan dengan ID $id tidak ditemukan"
+            ], 404);
         }
 
-        // Delete the membership
         $membership->delete();
 
-        return response()->json(['message' => 'Membership berhasil dihapus']);
-    }
-    /**
-     * Tampilkan membership berdasarkan ID
-     *
-     * Mengambil data membership berdasarkan ID.
-     *
-     * @param int $id
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function getMembershipById($id)
-    {
-        // Find the membership by ID
-        $membership = Membership::find($id);
-
-        if (!$membership) {
-            return response()->json(['message' => 'Membership tidak ditemukan.'], 404);
-        }
-
-        // Format the response
-        $formattedMembership = [
-            'id' => $membership->membershipId,
-            'name' => $membership->membershipName,
-            'price' => $membership->membershipPrice,
-            'location' => $membership->location->locationName,
-            'sport' => $membership->sport->sportName,
-            'created_at' => $membership->created_at,
-            'updated_at' => $membership->updated_at,
-        ];
-
-        return response()->json($formattedMembership);
-    }
-    /**
-     * Tampilkan membership berdasarkan lokasi dan olahraga
-     *
-     * Mengambil data membership berdasarkan lokasi dan olahraga.
-     *
-     * @param Request $request
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function getMembershipByLocationAndSport(Request $request)
-    {
-        $locationId = $request->input('locationId');
-        $sportId = $request->input('sportId');
-
-        // Validate the request
-        if (empty($locationId) || empty($sportId)) {
-            return response()->json(['message' => 'Location ID and Sport ID are required'], 422);
-        }
-
-        // Find the membership by location and sport
-        $membership = Membership::where('locationId', $locationId)
-            ->where('sportId', $sportId)
-            ->first();
-
-        if (!$membership) {
-            return response()->json(['message' => 'Membership tidak ditemukan.'], 404);
-        }
-
-        return response()->json($membership);
-    }
-    /**
-     * Tampilkan detail membership
-     *
-     * Mengambil detail membership berdasarkan ID.
-     *
-     * @param int $id
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function show($id)
-    {
-        // Find the membership by ID
-        $membership = Membership::find($id);
-
-        if (!$membership) {
-            return response()->json(['message' => 'Membership tidak ditemukan.'], 404);
-        }
-
-        return response()->json($membership);
+        return response()->json([
+            'success' => true,
+            'time' => now()->toISOString(),
+            'message' => 'Paket Langganan berhasil dihapus'
+        ], 200);
     }
 }

@@ -412,55 +412,6 @@ class ReservationController extends Controller
             'reservation' => $reservation
         ]);
     }
-    /**
-     * Batalkan Reservasi
-     *
-     * Membatalkan reservasi berdasarkan ID.
-     *
-     * @urlParam id integer required The ID of the reservation. Example: 1
-     *
-     * @response {
-     *   "success": true,
-     *   "message": "Reservasi berhasil dibatalkan"
-     * }
-     *
-     * @response 404 {
-     *   "success": false,
-     *   "message": "Reservasi tidak ditemukan"
-     * }
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\JsonResponse
-     */
-
-    public function cancel($id)
-    {
-        $reservation = Reservation::find($id);
-
-        if (!$reservation) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Reservasi tidak ditemukan. Cancel Reservasi'
-            ], 404);
-        }
-
-        // Ubah status time menjadi 'available'
-        foreach ($reservation->details as $detail) {
-            $time = Time::find($detail->timeId);
-            if ($time) {
-                $time->status = 'available';
-                $time->save();
-            }
-        }
-
-        $reservation->paymentStatus = 'cancelled';
-        $reservation->save();
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Reservasi berhasil dibatalkan'
-        ]);
-    }
 
     /**
      * Ambil Semua Lokasi dan Olahraga

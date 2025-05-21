@@ -38,15 +38,18 @@ Route::group(['prefix' => 'sports'], function () {
     Route::post('/', [SportController::class, 'store']);
     Route::put('/{id}', [SportController::class, 'update']);
     Route::delete('/{id}', [SportController::class, 'destroy']);
+    Route::get('/allSports', [SportController::class, 'getAllSports']);
 });
 
 // Location API routes
 Route::group(['prefix' => 'locations'], function () {
     Route::get('/', [LocationController::class, 'index']);
     Route::post('/', [LocationController::class, 'store']);
-    Route::get('/sports', [LocationController::class, 'getAllSports']);
+    Route::get('/allSports', [LocationController::class, 'getAllSports']);///gaperklu(ehh temp)
+    Route::get('/allLocations', [LocationController::class, 'getAllLocations']);
     Route::get('/{id}', [LocationController::class, 'show']);
-    Route::get('/{id}/sports', [LocationController::class, 'getLocationSports']);
+
+    Route::get('/{id}/sports', [LocationController::class, 'getLocationSports']);///gaperlu
     Route::put('/{id}', [LocationController::class, 'update']);
     Route::delete('/{id}', [LocationController::class, 'destroy']);
 });
@@ -55,8 +58,8 @@ Route::group(['prefix' => 'locations'], function () {
 Route::group(['prefix' => 'fields'], function () {
     Route::get('/', [FieldController::class, 'index']);
     Route::post('/', [FieldController::class, 'store']);
-    Route::get('/sports', [FieldController::class, 'getAllSports']);
-    Route::get('/locations', [FieldController::class, 'getAllLocations']);
+    // Route::get('/sports', [FieldController::class, 'getAllSports']);
+    // Route::get('/locations', [FieldController::class, 'getAllLocations']);
     Route::get('/{id}', [FieldController::class, 'show']);
     Route::put('/{id}', [FieldController::class, 'update']);
     Route::delete('/{id}', [FieldController::class, 'destroy']);

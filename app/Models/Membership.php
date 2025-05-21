@@ -11,7 +11,7 @@ class Membership extends Model
 
     protected $primaryKey = 'membershipId';
 
-    protected $fillable = ['locationId','sportId', 'name', 'description', 'price', 'weeks'];
+    protected $fillable = ['locationId','sportId', 'name', 'description', 'discount', 'weeks'];
     protected $casts = [
         'created_at' => 'datetime',
     ];

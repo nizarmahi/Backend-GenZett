@@ -188,4 +188,13 @@ class SportController extends Controller
             'message' => 'Sport berhasil dihapus'
         ]);
     }
+    public function getAllSports()
+    {
+        // Get unique sports from all fields
+        $sports = Sport::select('sportId as id', 'sportName as name')
+            ->whereHas('fields')  // Only sports that are used in fields
+            ->get();
+
+        return response()->json($sports);
+    }
 }

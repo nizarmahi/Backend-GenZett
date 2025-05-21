@@ -8,7 +8,9 @@ use App\Models\Sport;
 use App\Models\Field;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Storage;
 
 class LocationController extends Controller
 {
@@ -25,7 +27,7 @@ class LocationController extends Controller
         $page = (int)$request->input('page', 1);
         $limit = (int)$request->input('limit', 10);
         $search = $request->input('search');
-        $sports = $request->input('sports') ? explode('.', $request->input('sports')) : [];
+        $sports = $request->input('sports');
 
         // Start query with eager loading of relationships
         $query = Location::with(['fields', 'fields.sport']);
@@ -86,7 +88,7 @@ class LocationController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'locationName' => 'required|string|max:255',
-            'locationPath' => 'required|string|max:255',
+            'locationPath' => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
             'address' => 'required|string',
             'description' => 'required|string',
         ]);
@@ -177,39 +179,46 @@ class LocationController extends Controller
      * @return \Illuminate\Http\JsonResponse
      */
     public function update(Request $request, $id)
-    {
-        $location = Location::find($id);
+{
+    $location = Location::find($id);
 
-        if (!$location) {
-            return response()->json([
-                'success' => false,
-                'message' => "Lokasi dengan ID {$id} tidak ditemukan"
-            ], 404);
-        }
-
-        $validator = Validator::make($request->all(), [
-            'locationName' => 'sometimes|required|string|max:255',
-            'description' => 'sometimes|required|string',
-            'locationPath' => 'sometimes|required|string|max:255',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Validation error',
-                'errors' => $validator->errors()
-            ], 422);
-        }
-
-        $validatedData = $validator->validated();
-        $location->update($validatedData);
-
+    if (!$location) {
         return response()->json([
-            'success' => true,
-            'message' => 'Location berhasil diperbarui',
-            'location' => $location
-        ]);
+            'success' => false,
+            'message' => "Lokasi dengan ID {$id} tidak ditemukan"
+        ], 404);
     }
+
+    $validated = $request->validate([
+        'locationName' => 'nullable|string|max:255',
+        'description' => 'nullable|string',
+        'address' => 'nullable|string',
+        'locationPath' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+    ]);
+
+    if ($request->hasFile('locationPath')) {
+        // Hapus gambar lama
+        if ($location->locationPath && Storage::disk('public')->exists($location->locationPath)) {
+            Storage::disk('public')->delete($location->locationPath);
+        }
+
+        // Simpan gambar baru
+        $path = $request->file('locationPath')->store('locations', 'public');
+        $validated['locationPath'] = $path;
+    }
+
+    Log::info('Validated data:', $validated);
+
+
+    $location->fill($validated);
+    $location->save();
+
+    return response()->json([
+        'success' => true,
+        'message' => 'Location berhasil diperbarui',
+        'location' => $location
+    ]);
+}
 
     /**
      * Hapus Lokasi
@@ -256,15 +265,15 @@ class LocationController extends Controller
     public function getAllSports()
     {
         // Get unique sports from all fields
-        $sports = Sport::select('sportId', 'sportName')
-            ->whereHas('fields')  // Only sports that are used in fields
+        $sports = Sport::select('sportId as id', 'sportName as name')
+            // ->whereHas('fields')  // Only sports that are used in fields
             ->get();
 
-        return response()->json([
-            'success' => true,
-            'message' => 'List of all available sports',
-            'sports' => $sports
-        ]);
+        return response()->json($sports);
+    }
+    public function getAllLocations() {
+        $locations = Location::select('locationId as id', 'locationName as name')->get();
+        return response()->json($locations);
     }
 
 }

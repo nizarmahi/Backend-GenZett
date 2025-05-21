@@ -32,4 +32,19 @@ class Field extends Model
     {
         return $this->hasMany(ReservationDetail::class, 'fieldId');
     }
+    public function scopeHasSport($query, $sports)
+    {
+        return $query->whereIn('sportId', $sports);
+    }
+
+    public function scopeHasLocation($query, $locations)
+    {
+        return $query->whereIn('locationId', $locations);
+    }
+    public function scopeSearch($query, $keyword)
+    {
+        return $query->where('name', 'like', '%' . $keyword . '%');
+    }
+
+
 }

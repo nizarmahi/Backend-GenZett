@@ -13,7 +13,6 @@ return new class extends Migration
     {
         Schema::create('payments', function (Blueprint $table) {
             $table->id('paymentId');
-            // $table->foreignId('reservationId')->constrained('reservations')->onDelete('cascade');
             $table->unsignedBigInteger('reservationId');
             $table->foreign('reservationId')->references('reservationId')->on('reservations')->onDelete('cascade');
             $table->dateTime('invoiceDate')->nullable();

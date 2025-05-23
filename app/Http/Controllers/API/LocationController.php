@@ -224,12 +224,12 @@ class LocationController extends Controller
                 'message' => "Lokasi dengan Id {$locationId} tidak ditemukan"
             ], 404);
         }
-
+        $fieldsCount = DB::table('fields')->where('locationId', $locationId)->count();
         // Check if there are related fields before deletion
         if ($location->fields()->count() > 0) {
             return response()->json([
                 'success' => false,
-                'message' => 'Tidak dapat menghapus lokasi dengan lapangan yang ada'
+                'message' => "Lokasi tidak dapat dihapus karena sedang berisi {$fieldsCount} lapangan"
             ], 409);
         }
 

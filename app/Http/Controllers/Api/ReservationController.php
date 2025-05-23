@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use App\Models\Reservation;
 use App\Models\ReservationDetail;
 use App\Models\Field;
+use App\Models\Payment;
 use App\Models\Time;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
@@ -666,4 +667,35 @@ class ReservationController extends Controller
             ], 500);
         }
     }
+
+    public function confirmPayment(Request $request, $id)
+    {
+        $reservation = Reservation::find($id);
+
+        if (!$reservation) {
+            return response()->json(['message' => 'Reservasi tidak ditemukan'], 404);
+        }
+
+        if ($reservation->paymentStatus !== 'dp') {
+            return response()->json(['message' => 'Reservasi tidak dalam status DP'], 400);
+        }
+
+        // Simulasikan pembayaran sisa (lunas)
+        $payment = Payment::create([
+            'reservationId' => $reservation->reservationId,
+            'invoiceDate' => now(),
+            'totalPaid' => $reservation->total/2,
+        ]);
+
+        // Update status pembayaran di reservasi
+        $reservation->paymentStatus = 'complete';
+        $reservation->save();
+
+        return response()->json([
+            'message' => 'Pembayaran berhasil dikonfirmasi',
+            'reservation' => $reservation,
+            'payment' => $payment
+        ]);
+    }
+
 }

@@ -18,6 +18,10 @@ class ScheduleController extends Controller
      */
     public function index(Request $request)
     {
+        $date = $request->input('date');
+        $sportId = $request->input('sport'); // Ubah ke sportId karena frontend kirim ID
+        $locationId = $request->input('locationId');
+        
         $query = DB::table('reservations')
             ->join('reservation_details', 'reservations.reservationId', '=', 'reservation_details.reservationId')
             ->join('fields', 'reservation_details.fieldId', '=', 'fields.fieldId')
@@ -25,29 +29,34 @@ class ScheduleController extends Controller
             ->join('sports', 'fields.sportId', '=', 'sports.sportId')
             ->join('locations', 'fields.locationId', '=', 'locations.locationId')
             ->select([
-                // 'reservations.reservationId',
+                'locations.locationId',
                 'reservations.name',
                 'reservation_details.date',
                 'times.time as fieldTime',
-                'fields.fieldId',
-                // 'sports.sportName as sport',
-                // 'locations.locationName as location',
+                'fields.name',
+                'sports.sportName as sport',
                 'reservations.paymentStatus'
             ])
-            ->where('reservations.paymentStatus', 'pending'||'complete'||'dp');
+            ->whereIn('reservations.paymentStatus', ['pending', 'complete', 'dp']);
 
-        // Filter by sport
-        if ($request->has('sportId')) {
-            $query->where('sports.sportId', $request->sportId);
+        // Filter by sportId
+        if (!empty($sportId) && $sportId !== 'all') {
+            $query->where('sports.sportId', $sportId);
         }
 
-        // Filter by location
-        if ($request->has('locationId')) {
-            $query->where('locations.locationId', $request->locationId);
+        // Filter by date
+        if (!empty($date)) {
+            $query->where('reservation_details.date', $date);
+        }
+        
+        // Filter by locationId
+        if (!empty($locationId) && $locationId !== 'all') {
+            $query->where('locations.locationId', $locationId);
         }
 
         $schedules = $query->get();
 
         return response()->json($schedules);
     }
+
 }

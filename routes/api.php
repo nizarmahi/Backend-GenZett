@@ -39,15 +39,18 @@ Route::group(['prefix' => 'sports'], function () {
     Route::post('/', [SportController::class, 'store']);
     Route::put('/{id}', [SportController::class, 'update']);
     Route::delete('/{id}', [SportController::class, 'destroy']);
+    Route::get('/allSports', [SportController::class, 'getAllSports']);
 });
 
 // Location API routes
 Route::group(['prefix' => 'locations'], function () {
     Route::get('/', [LocationController::class, 'index']);
     Route::post('/', [LocationController::class, 'store']);
-    Route::get('/sports', [LocationController::class, 'getAllSports']);
+    Route::get('/allSports', [LocationController::class, 'getAllSports']);///gaperklu(ehh temp)
+    Route::get('/allLocations', [LocationController::class, 'getAllLocations']);
     Route::get('/{id}', [LocationController::class, 'show']);
-    Route::get('/{id}/sports', [LocationController::class, 'getLocationSports']);
+
+    Route::get('/{id}/sports', [LocationController::class, 'getLocationSports']);///gaperlu
     Route::put('/{id}', [LocationController::class, 'update']);
     Route::delete('/{id}', [LocationController::class, 'destroy']);
 });
@@ -56,8 +59,8 @@ Route::group(['prefix' => 'locations'], function () {
 Route::group(['prefix' => 'fields'], function () {
     Route::get('/', [FieldController::class, 'index']);
     Route::post('/', [FieldController::class, 'store']);
-    Route::get('/sports', [FieldController::class, 'getAllSports']);
-    Route::get('/locations', [FieldController::class, 'getAllLocations']);
+    // Route::get('/sports', [FieldController::class, 'getAllSports']);
+    // Route::get('/locations', [FieldController::class, 'getAllLocations']);
     Route::get('/{id}', [FieldController::class, 'show']);
     Route::put('/{id}', [FieldController::class, 'update']);
     Route::delete('/{id}', [FieldController::class, 'destroy']);
@@ -68,15 +71,13 @@ Route::group(['prefix' => 'reservations'], function () {
     Route::get('/location', [ReservationController::class, 'getAllLocations']);
     Route::get('/sport', [ReservationController::class, 'getSports']);
     Route::get('/sport/{locationId}', [ReservationController::class, 'getSportsByLocation']);
+    Route::get('/{locationId}/schedules', [ReservationController::class, 'getScheduleByLocation']);
 
     Route::get('/', [ReservationController::class, 'index']);
     Route::post('/', [ReservationController::class, 'store']);
     Route::get('/{id}', [ReservationController::class, 'show']);
     Route::put('/{id}', [ReservationController::class, 'update']);
     Route::put('/{id}/status', [ReservationController::class, 'updatePaymentStatus']);
-    Route::put('/{id}/cancel', [ReservationController::class, 'cancel']);
-    Route::put('/{id}/confirm', [ReservationController::class, 'confirmPayment']);
-    Route::get('/{locationId}/schedules', [ReservationController::class, 'getScheduleByLocation']);
 });
 // Payment API routes
 Route::group(['prefix' => 'payments'], function () {

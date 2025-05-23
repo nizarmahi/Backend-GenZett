@@ -17,6 +17,7 @@ return new class extends Migration
 
             $table->string('password', 255); // panjang untuk hash bcrypt
             $table->timestamps();
+            $table->softDeletes();
             $table->rememberToken()->nullable();
 
         });

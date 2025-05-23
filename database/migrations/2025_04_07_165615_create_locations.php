@@ -18,6 +18,7 @@ return new class extends Migration
             $table->text('locationPath')->nullable();
             $table->string('address')->nullable();
             $table->timestamps();
+            $table->softDeletes();
         });
     }
 

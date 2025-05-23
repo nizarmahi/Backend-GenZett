@@ -21,63 +21,50 @@ class FieldController extends Controller
      * @param Request $request
      * @return \Illuminate\Http\JsonResponse
      */
-    public function index(Request $request){
-        $page = (int)$request->input('page', 1);
-        $limit = (int)$request->input('limit', 10);
+    public function index(Request $request)
+    {
+        $page = (int) $request->input('page', 1);
+        $limit = (int) $request->input('limit', 10);
         $search = $request->input('search');
         $sports = $request->input('sports') ? explode('.', $request->input('sports')) : [];
         $locations = $request->input('locations') ? explode('.', $request->input('locations')) : [];
 
-        $admin = auth()->user()->admin;
-
-        if (!$admin) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Akses ditolak. Anda bukan Admin Cabang ini.'
-            ], 403);
-        }
-
-        // Start query with eager loading of relationships
-        $query = Field::with(['location', 'sport', 'times'])
-            ->where('locationId', $admin->location_id);
+        $query = Field::with(['location', 'sport', 'times']);
 
         // Apply filters
         if (!empty($sports)) {
-            $query->hasSport($sports);
+            $query->whereIn('sportId', $sports);
         }
 
         if (!empty($locations)) {
-            $query->hasLocation($locations);
+            $query->whereIn('locationId', $locations);
         }
 
-        if ($search) {
-            $query->search($search);
+        if (!empty($search)) {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', '%' . $search . '%')
+                ->orWhereHas('location', function ($q) use ($search) {
+                    $q->where('locationName', 'like', '%' . $search . '%');
+                })
+                ->orWhereHas('sport', function ($q) use ($search) {
+                    $q->where('sportName', 'like', '%' . $search . '%');
+                });
+            });
         }
 
-        // Get total count
         $totalFields = $query->count();
-
-        // Calculate offset
         $offset = ($page - 1) * $limit;
-
-        // Get paginated results
         $fields = $query->skip($offset)->take($limit)->get();
 
-        // Format the response
         $formattedFields = $fields->map(function ($field) {
-            // Group sports by each field
-            $sports = $field->sport->sportName;
-
             return [
                 'id' => $field->fieldId,
                 'name' => $field->name,
-                'location' => $field->location->locationName,
-                'sport' => $sports,
+                'location' => $field->location->locationName ?? null,
+                'sport' => $field->sport->sportName ?? null,
                 'startHour' => $field->times->min('time'),
                 'endHour' => $field->times->max('time'),
-                'desc' => $field->description,
-                'created_at' => $field->created_at,
-                'updated_at' => $field->updated_at,
+                'description' => $field->description,
             ];
         });
 
@@ -91,6 +78,7 @@ class FieldController extends Controller
             'fields' => $formattedFields
         ]);
     }
+
   
     /**
      * Detail Lapangan
@@ -145,7 +133,7 @@ class FieldController extends Controller
     {
         $field = Field::findOrFail($id);
 
-        $admin = auth()->user()->admin;
+        $admin = auth()->   user()->admin;
 
         if (!$admin || $field->locationId !== $admin->location_id) {
             return response()->json([
@@ -314,47 +302,12 @@ class FieldController extends Controller
         ], 201);
     }
 
-    /**
-     * Mengambil semua olahraga yang tersedia
-     *
-     * Mendapatkan daftar semua olahraga yang tersedia di lapangan.
-     *
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function getAllSports()
-    {
-        // Get unique sports from all fields
-        $sports = Sport::select('sportId', 'sportName')
-            ->whereHas('fields')  // Only sports that are used in fields
-            ->get();
+    // Untuk lokasi
 
-        return response()->json([
-            'success' => true,
-            'time' => now()->toISOString(),
-            'message' => 'List of all available sports',
-            'sports' => $sports
-        ]);
-    }
 
-    /**
-     * Mengambil semua lokasi yang tersedia
-     *
-     * Mendapatkan daftar semua lokasi yang tersedia di lapangan.
-     *
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function getAllLocations()
-    {
-        // Get unique locations from all fields
-        $locations = Location::select('locationId', 'locationName')
-            ->whereHas('fields')  // Only locations that are used in fields
-            ->get();
-
-        return response()->json([
-            'success' => true,
-            'time' => now()->toISOString(),
-            'message' => 'List of all available locations',
-            'locations' => $locations
-        ]);
+    // Untuk olahraga
+    public function getAllSports() {
+        $sports = Sport::select('sportId as id', 'sportName as name')->get();
+        return response()->json($sports);
     }
 }

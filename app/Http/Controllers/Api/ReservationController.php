@@ -39,7 +39,7 @@ class ReservationController extends Controller
             'details.time',
             'user'
         ])
-        ->orderByDesc('created_at');
+            ->orderByDesc('created_at');
 
         if (!empty($paymentStatus)) {
             $query->where('paymentStatus', $paymentStatus);
@@ -228,10 +228,11 @@ class ReservationController extends Controller
         $conflicts = [];
         foreach ($details as $detail) {
             foreach ($detail['timeIds'] as $timeId) {
-                $exists = ReservationDetail::where('fieldId', $detail['fieldId'])
-                    ->where('timeId', $timeId)
-                    ->where('date', $detail['date'])
-                    ->where('status', 'booked')
+                $exists = ReservationDetail::join('times', 'reservation_details.timeId', '=', 'times.timeId')
+                    ->where('reservation_details.fieldId', $detail['fieldId'])
+                    ->where('reservation_details.timeId', $timeId)
+                    ->where('reservation_details.date', $detail['date'])
+                    ->where('times.status', 'booked')
                     ->first();
 
                 if ($exists) {
@@ -268,7 +269,6 @@ class ReservationController extends Controller
                     'fieldId' => $detail['fieldId'],
                     'timeId' => $timeId,
                     'date' => $detail['date'],
-                    'status' => '',
                 ]);
             }
         }
@@ -347,137 +347,6 @@ class ReservationController extends Controller
     }
 
     /**
-     * Update Reservasi
-     *
-     * Mengubah reservasi yang sudah ada dengan detail baru.
-     *
-     * @urlParam id integer required The ID of the reservation to update. Example: 1
-     * @bodyParam details array required Array of reservation details.
-     * @bodyParam details.*.fieldId integer required The ID of the field to reserve. Example: 1
-     * @bodyParam details.*.timeId integer required The ID of the time slot to reserve. Example: 1
-     * @bodyParam details.*.date string required The date for the reservation in Y-m-d format. Example: 2025-05-15
-     * @bodyParam name string optional The name for this reservation. Example: "Updated Weekend Match"
-     * @bodyParam paymentStatus string optional The payment status (pending, paid, cancelled). Example: paid
-     *
-     * @response {
-     *   "success": true,
-     *   "message": "Reservasi berhasil diperbarui",
-     *   "reservation": {}
-     * }
-     *
-     * @response 404 {
-     *   "success": false,
-     *   "message": "Reservasi tidak ditemukan"
-     * }
-     *
-     * @response 409 {
-     *   "success": false,
-     *   "message": "Beberapa lapangan dan jam sudah dipesan",
-     *   "conflicts": []
-     * }
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  int  $id
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function update(Request $request, $id)
-    {
-        $reservation = Reservation::with('details')->find($id);
-
-        if (!$reservation) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Reservasi tidak ditemukan. Update Reservasi.'
-            ], 404);
-        }
-
-        $validator = Validator::make($request->all(), [
-            'details' => 'required|array|min:1',
-            'details.*.fieldId' => 'required|exists:fields,fieldId',
-            'details.*.timeId' => 'required|exists:times,timeId',
-            'details.*.date' => 'required|date',
-            'name' => 'sometimes|string|max:255',
-            'paymentStatus' => 'sometimes|string|in:pending,paid,cancelled',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Data yang diberikan tidak valid.',
-                'errors' => $validator->errors()
-            ], 422);
-        }
-
-        $incomingDetails = collect($request->details);
-
-        // Cek konflik
-        $conflicts = [];
-        foreach ($incomingDetails as $detail) {
-            foreach ($detail['timeIds'] as $timeId) {
-                $exists = ReservationDetail::where('fieldId', $detail['fieldId'])
-                    ->where('timeId', $timeId)
-                    ->where('date', $detail['date'])
-                    ->where('status', 'booked')
-                    ->first();
-
-                if ($exists) {
-                    $conflicts[] = [
-                        'fieldId' => $detail['fieldId'],
-                        'timeId' => $timeId,
-                        'date' => $detail['date'],
-                    ];
-                }
-            }
-        }
-
-        if (!empty($conflicts)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Beberapa lapangan dan jam sudah dipesan',
-                'conflicts' => $conflicts
-            ], 409);
-        }
-
-        // Hapus semua detail lama
-        $reservation->details()->delete();
-
-        // Tambahkan detail baru
-        $total = 0;
-        foreach ($incomingDetails as $detail) {
-            $time = Time::find($detail['timeId']);
-            $total += $time->price;
-
-            $reservation->details()->create([
-                'fieldId' => $detail['fieldId'],
-                'timeId' => $detail['timeId'],
-                'date' => $detail['date'],
-            ]);
-        }
-
-        // Update total biaya
-        $reservation->total = $total;
-
-        // Update nama dan status pembayaran jika ada
-        if ($request->has('name')) {
-            $reservation->name = $request->name;
-        }
-        if ($request->has('paymentStatus')) {
-            $reservation->paymentStatus = $request->paymentStatus;
-        }
-        // Jika ada detail yang sudah dibayar, ubah status reservasi menjadi 'paid'
-        if ($reservation->details()->where('paymentStatus', 'paid')->exists()) {
-            $reservation->paymentStatus = 'paid';
-        }
-        $reservation->save();
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Reservasi berhasil diperbarui',
-            'reservation' => $reservation->load('details.field', 'details.time')
-        ]);
-    }
-
-    /**
      * Update status pembayaran reservasi
      *
      * Mengubah status pembayaran reservasi berdasarkan ID.
@@ -512,7 +381,7 @@ class ReservationController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'paymentStatus' => 'required|string|in:pending,paid,cancelled',
+            'paymentStatus' => 'required|string|in:pending,complete,fail,dp',
         ]);
 
         if ($validator->fails()) {
@@ -526,114 +395,21 @@ class ReservationController extends Controller
         $reservation->paymentStatus = $request->paymentStatus;
         $reservation->save();
 
+        // Ubah status time menjadi 'available' jika dibatalkan
+        if ($request->paymentStatus === 'fail') {
+            foreach ($reservation->details as $detail) {
+                $time = Time::find($detail->timeId);
+                if ($time) {
+                    $time->status = 'available';
+                    $time->save();
+                }
+            }
+        }
+
         return response()->json([
             'success' => true,
             'message' => 'Status pembayaran reservasi berhasil diperbarui',
             'reservation' => $reservation
-        ]);
-    }
-
-    /**
-     * Konfirmasi Pembayaran
-     *
-     * Mengonfirmasi pembayaran reservasi.
-     *
-     * @urlParam id integer required The ID of the reservation. Example: 1
-     * @bodyParam paymentStatus string required The payment status (paid, cancelled). Example: paid
-     *
-     * @response {
-     *   "success": true,
-     *   "message": "Konfirmasi pembayaran berhasil",
-     *   "reservation": {}
-     * }
-     *
-     * @response 404 {
-     *   "success": false,
-     *   "message": "Reservasi tidak ditemukan"
-     * }
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  int  $id
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function confirmPayment(Request $request, $id)
-    {
-        $reservation = Reservation::find($id);
-
-        if (!$reservation) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Reservasi tidak ditemukan. Konfirmasi Pembayaran'
-            ], 404);
-        }
-
-        $validator = Validator::make($request->all(), [
-            'paymentStatus' => 'required|string|in:paid,cancelled',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Data yang diberikan tidak valid.',
-                'errors' => $validator->errors()
-            ], 422);
-        }
-
-        $reservation->paymentStatus = $request->paymentStatus;
-        $reservation->save();
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Konfirmasi pembayaran berhasil',
-            'reservation' => $reservation
-        ]);
-    }
-    /**
-     * Batalkan Reservasi
-     *
-     * Membatalkan reservasi berdasarkan ID.
-     *
-     * @urlParam id integer required The ID of the reservation. Example: 1
-     *
-     * @response {
-     *   "success": true,
-     *   "message": "Reservasi berhasil dibatalkan"
-     * }
-     *
-     * @response 404 {
-     *   "success": false,
-     *   "message": "Reservasi tidak ditemukan"
-     * }
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function cancel($id)
-    {
-        $reservation = Reservation::find($id);
-
-        if (!$reservation) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Reservasi tidak ditemukan. Cancel Reservasi'
-            ], 404);
-        }
-
-        // Ubah status time menjadi 'available'
-        foreach ($reservation->details as $detail) {
-            $time = Time::find($detail->timeId);
-            if ($time) {
-                $time->status = 'available';
-                $time->save();
-            }
-        }
-
-        $reservation->paymentStatus = 'cancelled';
-        $reservation->save();
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Reservasi berhasil dibatalkan'
         ]);
     }
 

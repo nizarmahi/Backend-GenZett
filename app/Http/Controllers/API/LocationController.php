@@ -8,7 +8,9 @@ use App\Models\Sport;
 use App\Models\Field;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Storage;
 
 class LocationController extends Controller
 {
@@ -33,7 +35,7 @@ class LocationController extends Controller
         // Apply filters
         if (!empty($sports)) {
             $query->whereHas('fields.sport', function ($q) use ($sports) {
-                $q->whereIn('sportName', $sports); // atau key lain sesuai field kamu
+                $q->whereIn('sportId', $sports); // atau key lain sesuai field kamu
             });
         }
 
@@ -88,7 +90,7 @@ class LocationController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'locationName' => 'required|string|max:255',
-            'locationPath' => 'required|string|max:255',
+            'locationPath' => 'required|image|mimes:jpeg,png,jpg,svg|max:2048',
             'address' => 'required|string',
             'description' => 'required|string',
         ]);
@@ -138,28 +140,12 @@ class LocationController extends Controller
             ], 404);
         }
 
-        // Format the response
-        // $sports = $location->fields->pluck('sport.sportName')->unique()->values()->all();
-
         $formattedLocation = [
             'locationId' => $location->locationId,
             'img' => $location->locationPath,
             'locationName' => $location->locationName,
-            // 'sports' => $sports,
-            // 'countLap' => $location->fields->count(),
             'address' => $location->address ?? '',
             'description' => $location->description,
-            // 'created_at' => $location->created_at,
-            // 'updated_at' => $location->updated_at,
-
-            // 'fields' => $location->fields->map(function ($field) {
-            //     return [
-            //         'id' => $field->fieldId,
-            //         'name' => $field->name,
-            //         'sports' => $field->sport->sportName,
-            //         'description' => $field->description,
-            //     ];
-            // })
         ];
 
         return response()->json([
@@ -189,22 +175,29 @@ class LocationController extends Controller
             ], 404);
         }
 
-        $validator = Validator::make($request->all(), [
-            'locationName' => 'sometimes|required|string|max:255',
-            'description' => 'sometimes|required|string',
-            'locationPath' => 'sometimes|required|string|max:255',
+        $validated = $request->validate([
+            'locationName' => 'nullable|string|max:255',
+            'description' => 'nullable|string',
+            'address' => 'nullable|string',
+            'locationPath' => 'nullable|image|mimes:jpeg,png,jpg,svg|max:2048',
         ]);
 
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Validation error',
-                'errors' => $validator->errors()
-            ], 422);
+        if ($request->hasFile('locationPath')) {
+            // Hapus gambar lama
+            if ($location->locationPath && Storage::disk('public')->exists($location->locationPath)) {
+                Storage::disk('public')->delete($location->locationPath);
+            }
+
+            // Simpan gambar baru
+            $path = $request->file('locationPath')->store('locations', 'public');
+            $validated['locationPath'] = $path;
         }
 
-        $validatedData = $validator->validated();
-        $location->update($validatedData);
+        Log::info('Validated data:', $validated);
+
+
+        $location->fill($validated);
+        $location->save();
 
         return response()->json([
             'success' => true,
@@ -258,14 +251,14 @@ class LocationController extends Controller
     public function getAllSports()
     {
         // Get unique sports from all fields
-        $sports = Sport::select('sportId', 'sportName')
-            ->whereHas('fields')  // Only sports that are used in fields
+        $sports = Sport::select('sportId as id', 'sportName as name')
+            // ->whereHas('fields')  // Only sports that are used in fields
             ->get();
 
-        return response()->json([
-            'success' => true,
-            'message' => 'List of all available sports',
-            'sports' => $sports
-        ]);
+        return response()->json($sports);
+    }
+    public function getAllLocations() {
+        $locations = Location::select('locationId as id', 'locationName as name')->get();
+        return response()->json($locations);
     }
 }

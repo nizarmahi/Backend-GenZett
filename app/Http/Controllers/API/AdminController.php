@@ -21,19 +21,32 @@ class AdminController extends Controller
     public function index(Request $request){
         $page = (int)$request->input('page', 1);
         $limit = (int)$request->input('limit', 10);
-        $search = $request->input('search');
-        $location = $request->input('locations') ? explode('.', $request->input('locations')) : [];
+        $search = $request->input('search', '');
+        $locationIds = $request->input('locationIds', []);
+
+        // Pastikan locationIds array
+        if (!is_array($locationIds)) {
+            $locationIds = explode(',', $locationIds); // jika dikirim string "1,2,3"
+        }
 
         // Start query with eager loading of relationships
         $query = Admin::with(['user', 'location']);
 
-        if (!empty($search)) {
-            $query->search($search);
+         // Filter lokasi jika ada input locationIds
+        if (!empty($locationIds)) {
+            $query->whereIn('locationId', $locationIds);
         }
 
-        // Apply filters
-        if (!empty($location)) {
-            $query->hasLocation($location);
+        // Filter pencarian nama user atau lokasi
+        if ($search) {
+            $query->where(function($q) use ($search) {
+                $q->whereHas('user', function($q2) use ($search) {
+                    $q2->where('name', 'like', "%{$search}%");
+                })
+                ->orWhereHas('location', function($q3) use ($search) {
+                    $q3->where('locationName', 'like', "%{$search}%");
+                });
+            });
         }
 
         // Get total count
@@ -49,7 +62,6 @@ class AdminController extends Controller
         $formattedAdmins = $admins->map(function ($admin) {
             return [
                 'id' => $admin->adminId,
-                'username' => $admin->user->username,
                 'name' => $admin->user->name,
                 'email' => $admin->user->email,
                 'location' => $admin->location->locationName,
@@ -91,7 +103,6 @@ class AdminController extends Controller
 
         $formattedAdmin = [
             'id' => $admin->adminId,
-            'username' => $admin->user->username,
             'name' => $admin->user->name,
             'email' => $admin->user->email,
             'location' => $admin->location->locationName,
@@ -119,9 +130,11 @@ class AdminController extends Controller
      */
     public function update(Request $request, $id)
     {
+        $admin = Admin::findOrFail($id);
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255',
+            'email' => 'required|string|email|max:255|unique:users,email,' . $admin->userId . ',userId',
             'phone' => 'required|string|max:255',
             'locationId' => 'required|integer',
         ]);
@@ -196,7 +209,6 @@ class AdminController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'username' => 'required|string|max:255',
             'password' => 'required|string|min:8|confirmed',
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255',
@@ -205,7 +217,6 @@ class AdminController extends Controller
         ]);
 
         $user = User::create([
-            'username' => $validated['username'],
             'password' => bcrypt($validated['password']),
             'name' => $validated['name'],
             'email' => $validated['email'],

@@ -78,6 +78,7 @@ Route::group(['prefix' => 'reservations'], function () {
     Route::get('/{id}', [ReservationController::class, 'show']);
     Route::put('/{id}', [ReservationController::class, 'update']);
     Route::put('/{id}/status', [ReservationController::class, 'updatePaymentStatus']);
+    Route::post('/{id}/pay', [ReservationController::class, 'confirmPayment']);
 });
 // Payment API routes
 Route::group(['prefix' => 'payments'], function () {

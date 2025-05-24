@@ -27,7 +27,7 @@ class LocationController extends Controller
         $page = (int)$request->input('page', 1);
         $limit = (int)$request->input('limit', 10);
         $search = $request->input('search');
-        $sports = $request->input('sports');
+        $sports = $request->input('sports') ? explode('.', $request->input('sports')) : [];
 
         // Start query with eager loading of relationships
         $query = Location::with(['fields', 'fields.sport']);
@@ -35,7 +35,7 @@ class LocationController extends Controller
         // Apply filters
         if (!empty($sports)) {
             $query->whereHas('fields.sport', function ($q) use ($sports) {
-                $q->whereIn('sportName', $sports); // atau key lain sesuai field kamu
+                $q->whereIn('sportId', $sports); // atau key lain sesuai field kamu
             });
         }
 
@@ -90,7 +90,7 @@ class LocationController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'locationName' => 'required|string|max:255',
-            'locationPath' => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+            'locationPath' => 'required|image|mimes:jpeg,png,jpg,svg|max:2048',
             'address' => 'required|string',
             'description' => 'required|string',
         ]);
@@ -140,28 +140,12 @@ class LocationController extends Controller
             ], 404);
         }
 
-        // Format the response
-        // $sports = $location->fields->pluck('sport.sportName')->unique()->values()->all();
-
         $formattedLocation = [
             'locationId' => $location->locationId,
             'img' => $location->locationPath,
             'locationName' => $location->locationName,
-            // 'sports' => $sports,
-            // 'countLap' => $location->fields->count(),
             'address' => $location->address ?? '',
             'description' => $location->description,
-            // 'created_at' => $location->created_at,
-            // 'updated_at' => $location->updated_at,
-
-            // 'fields' => $location->fields->map(function ($field) {
-            //     return [
-            //         'id' => $field->fieldId,
-            //         'name' => $field->name,
-            //         'sports' => $field->sport->sportName,
-            //         'description' => $field->description,
-            //     ];
-            // })
         ];
 
         return response()->json([
@@ -181,46 +165,46 @@ class LocationController extends Controller
      * @return \Illuminate\Http\JsonResponse
      */
     public function update(Request $request, $id)
-{
-    $location = Location::find($id);
+    {
+        $location = Location::find($id);
 
-    if (!$location) {
-        return response()->json([
-            'success' => false,
-            'message' => "Lokasi dengan ID {$id} tidak ditemukan"
-        ], 404);
-    }
-
-    $validated = $request->validate([
-        'locationName' => 'nullable|string|max:255',
-        'description' => 'nullable|string',
-        'address' => 'nullable|string',
-        'locationPath' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
-    ]);
-
-    if ($request->hasFile('locationPath')) {
-        // Hapus gambar lama
-        if ($location->locationPath && Storage::disk('public')->exists($location->locationPath)) {
-            Storage::disk('public')->delete($location->locationPath);
+        if (!$location) {
+            return response()->json([
+                'success' => false,
+                'message' => "Lokasi dengan ID {$id} tidak ditemukan"
+            ], 404);
         }
 
-        // Simpan gambar baru
-        $path = $request->file('locationPath')->store('locations', 'public');
-        $validated['locationPath'] = $path;
+        $validated = $request->validate([
+            'locationName' => 'nullable|string|max:255',
+            'description' => 'nullable|string',
+            'address' => 'nullable|string',
+            'locationPath' => 'nullable|image|mimes:jpeg,png,jpg,svg|max:2048',
+        ]);
+
+        if ($request->hasFile('locationPath')) {
+            // Hapus gambar lama
+            if ($location->locationPath && Storage::disk('public')->exists($location->locationPath)) {
+                Storage::disk('public')->delete($location->locationPath);
+            }
+
+            // Simpan gambar baru
+            $path = $request->file('locationPath')->store('locations', 'public');
+            $validated['locationPath'] = $path;
+        }
+
+        Log::info('Validated data:', $validated);
+
+
+        $location->fill($validated);
+        $location->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Location berhasil diperbarui',
+            'location' => $location
+        ]);
     }
-
-    Log::info('Validated data:', $validated);
-
-
-    $location->fill($validated);
-    $location->save();
-
-    return response()->json([
-        'success' => true,
-        'message' => 'Location berhasil diperbarui',
-        'location' => $location
-    ]);
-}
 
     /**
      * Hapus Lokasi
@@ -240,12 +224,12 @@ class LocationController extends Controller
                 'message' => "Lokasi dengan Id {$locationId} tidak ditemukan"
             ], 404);
         }
-
+        $fieldsCount = DB::table('fields')->where('locationId', $locationId)->count();
         // Check if there are related fields before deletion
         if ($location->fields()->count() > 0) {
             return response()->json([
                 'success' => false,
-                'message' => 'Tidak dapat menghapus lokasi dengan lapangan yang ada'
+                'message' => "Lokasi tidak dapat dihapus karena sedang berisi {$fieldsCount} lapangan"
             ], 409);
         }
 

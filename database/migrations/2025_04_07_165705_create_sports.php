@@ -16,6 +16,7 @@ return new class extends Migration
             $table->string('sportName')->nullable();
             $table->string('description')->nullable();
             $table->timestamps();
+            $table->softDeletes();
         });
     }
 

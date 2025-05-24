@@ -13,7 +13,6 @@ return new class extends Migration
     {
         Schema::create('times', function (Blueprint $table) {
             $table->id('timeId');
-            // $table->foreignId('fieldId')->constrained('fields')->onDelete('cascade');
             $table->unsignedBigInteger('fieldId');
             $table->foreign('fieldId')->references('fieldId')->on('fields')->onDelete('cascade');
             $table->time('time')->nullable();

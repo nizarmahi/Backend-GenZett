@@ -38,7 +38,7 @@ Route::group(['prefix' => 'sports'], function () {
     Route::get('/{id}', [SportController::class, 'show']);
     Route::post('/', [SportController::class, 'store']);
     Route::put('/{id}', [SportController::class, 'update']);
-    Route::delete('/{id}', [SportController::class, 'destroy']);
+    Route::delete('/{id}', [SportController::class, 'delete']);
     Route::get('/allSports', [SportController::class, 'getAllSports']);
 });
 
@@ -52,7 +52,7 @@ Route::group(['prefix' => 'locations'], function () {
 
     Route::get('/{id}/sports', [LocationController::class, 'getLocationSports']);///gaperlu
     Route::put('/{id}', [LocationController::class, 'update']);
-    Route::delete('/{id}', [LocationController::class, 'destroy']);
+    Route::delete('/{id}', [LocationController::class, 'delete']);
 });
 
 // Field API routes
@@ -63,7 +63,7 @@ Route::group(['prefix' => 'fields'], function () {
     // Route::get('/locations', [FieldController::class, 'getAllLocations']);
     Route::get('/{id}', [FieldController::class, 'show']);
     Route::put('/{id}', [FieldController::class, 'update']);
-    Route::delete('/{id}', [FieldController::class, 'destroy']);
+    Route::delete('/{id}', [FieldController::class, 'delete']);
 });
 
 // Reservation API routes

@@ -214,7 +214,7 @@ class LocationController extends Controller
      * @param int $id
      * @return \Illuminate\Http\JsonResponse
      */
-    public function destroy($locationId)
+    public function delete($locationId)
     {
         $location = Location::find($locationId);
 

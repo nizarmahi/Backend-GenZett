@@ -214,7 +214,7 @@ class FieldController extends Controller
      * @param int $id
      * @return \Illuminate\Http\JsonResponse
      */
-    public function destroy($id)
+    public function delete($id)
     {
         $field = Field::find($id);
 

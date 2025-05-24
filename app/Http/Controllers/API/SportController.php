@@ -40,6 +40,7 @@ class SportController extends Controller
             $sport->countLocation = DB::table('fields')
                 ->join('locations', 'fields.locationId', '=', 'locations.locationId')
                 ->where('fields.sportId', $sport->sportId)
+                ->where('fields.deleted_at', null)
                 ->distinct('locations.locationId')
                 ->count('locations.locationId');
         }
@@ -157,7 +158,7 @@ class SportController extends Controller
      * @param int $id
      * @return \Illuminate\Http\JsonResponse
      */
-    public function destroy($id)
+    public function delete($id)
     {
         $sport = Sport::find($id);
 
@@ -170,7 +171,7 @@ class SportController extends Controller
         }
 
         // Cek apakah masih digunakan pada field
-        $fieldsCount = DB::table('fields')->where('sportId', $id)->count();
+        $fieldsCount = DB::table('fields')->where('sportId', $id)->where('deleted_at', null)->count();
 
         if ($fieldsCount > 0) {
             return response()->json([

@@ -57,13 +57,14 @@ class FieldController extends Controller
         $fields = $query->skip($offset)->take($limit)->get();
 
         $formattedFields = $fields->map(function ($field) {
+           $availableTimes = $field->times->where('status', 'available');
             return [
                 'id' => $field->fieldId,
                 'name' => $field->name,
                 'location' => $field->location->locationName ?? null,
                 'sport' => $field->sport->sportName ?? null,
-                'startHour' => $field->times->min('time'),
-                'endHour' => $field->times->max('time'),
+                'startHour' => $availableTimes->min('time'),
+                'endHour' => $availableTimes->max('time'),
                 'description' => $field->description,
             ];
         });
@@ -103,13 +104,11 @@ class FieldController extends Controller
         $formattedField = [
             'id' => $field->fieldId,
             'name' => $field->name,
-            'location' => $field->location->locationName,
-            'sport' => $field->sport->sportName,
+            'location' => $field->location->locationId,
+            'sport' => $field->sport->sportId,
             'description' => $field->description,
             'startHour' => $field->times->min('time'),
             'endHour' => $field->times->max('time'),
-            'created_at' => $field->created_at,
-            'updated_at' => $field->updated_at,
         ];
 
         return response()->json([
@@ -131,52 +130,49 @@ class FieldController extends Controller
      */
     public function update(Request $request, $id)
     {
+        // /** @var \App\Models\User $user */
+        // $user = auth()->user();
+        // $admin = $user->admin;
+
         $field = Field::findOrFail($id);
 
-        $admin = auth()->   user()->admin;
+        // Cek izin admin cabang
+        // if (!$admin || $field->locationId !== $admin->location_id) {
+        //     return response()->json([
+        //         'success' => false,
+        //         'message' => 'Anda tidak memiliki izin untuk mengubah lapangan ini.'
+        //     ], 403);
+        // }
 
-        if (!$admin || $field->locationId !== $admin->location_id) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Anda tidak memiliki izin untuk mengubah lapangan ini.'
-            ], 403);
-        }
-
-        $validator = Validator::make($request->all(), [
+        // Validasi input
+        $validated = $request->validate([
             'locationId' => 'required|integer',
             'sportId' => 'required|integer',
             'name' => 'required|string|max:255',
-            'startHour' => 'required|string',
-            'endHour' => 'required|string',
+            'startHour' => 'required|date_format:H:i',
+            'endHour' => 'required|date_format:H:i|after:startHour',
             'description' => 'required|string',
         ]);
 
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Validasi gagal',
-                'errors' => $validator->errors()
-            ], 422);
-        }
+        // Update data field (termasuk jam operasi)
+        $field->update([
+            'locationId' => $validated['locationId'],
+            'sportId' => $validated['sportId'],
+            'name' => $validated['name'],
+            'description' => $validated['description'],
+        ]);
 
-        $validatedData = $validator->validated();
+        // Ambil jam awal dan akhir
+        $startHour = Carbon::createFromFormat('H:i', $validated['startHour'])->hour;
+        $endHour = Carbon::createFromFormat('H:i', $validated['endHour'])->hour;
 
-        $field = Field::findOrFail($id);
-        $field->update($validatedData);
-
-        // Konversi jam
-        $startHourRaw = str_replace('.', ':', $validatedData['startHour']);
-        $endHourRaw = str_replace('.', ':', $validatedData['endHour']);
-        $startHour = Carbon::createFromFormat('H:i', $startHourRaw)->hour;
-        $endHour = Carbon::createFromFormat('H:i', $endHourRaw)->hour;
-
-        // Ambil jam yang sudah ada di tabel times
+        // Ambil semua time slot yang sudah ada
         $existingTimes = Time::where('fieldId', $field->fieldId)->get();
         $existingHours = $existingTimes->pluck('time')->map(function ($time) {
             return Carbon::createFromFormat('H:i:s', $time)->hour;
         })->toArray();
 
-        // Tambahkan jam baru jika diperpanjang
+        // Tambah jam baru jika perlu
         for ($hour = $startHour; $hour < $endHour; $hour++) {
             if (!in_array($hour, $existingHours)) {
                 Time::create([
@@ -188,11 +184,19 @@ class FieldController extends Controller
             }
         }
 
+        // Ubah status time slot menjadi 'Available' atau 'Non-available' sesuai jam operasi
         foreach ($existingTimes as $time) {
             $hour = Carbon::createFromFormat('H:i:s', $time->time)->hour;
-            if ($hour < $startHour || $hour >= $endHour) {
-                $time->delete();
+
+            if ($hour >= $startHour && $hour < $endHour) {
+                // Dalam jam operasi
+                $time->status = 'available';
+            } else {
+                // Di luar jam operasi
+                $time->status = 'non-available';
             }
+
+            $time->save();
         }
 
         return response()->json([
@@ -210,18 +214,18 @@ class FieldController extends Controller
      * @param int $id
      * @return \Illuminate\Http\JsonResponse
      */
-    public function destroy($id)
+    public function delete($id)
     {
         $field = Field::find($id);
 
-        $admin = auth()->user()->admin;
+        // $admin = auth()->user()->admin;
 
-        if (!$admin || $field->locationId !== $admin->location_id) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Anda tidak memiliki izin untuk menghapus lapangan ini.'
-            ], 403);
-        }
+        // if (!$admin || $field->locationId !== $admin->location_id) {
+        //     return response()->json([
+        //         'success' => false,
+        //         'message' => 'Anda tidak memiliki izin untuk menghapus lapangan ini.'
+        //     ], 403);
+        // }
 
         if (!$field) {
             return response()->json([
@@ -238,6 +242,11 @@ class FieldController extends Controller
             ], 409);
         }
 
+        foreach ($field->times as $time) {
+            $time->status = 'non-available';
+            $time->save();
+        }
+        
         $field->delete();
 
         return response()->json([
@@ -257,53 +266,44 @@ class FieldController extends Controller
      */
     public function store(Request $request)
     {
-        $admin = auth()->user()->admin;
-
-        if (!$admin) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Akses ditolak. Anda bukan Admin Cabang ini.'
-            ], 403);
-        }
+    //     $user = auth()->user();
+    //     $admin = $user->admin;
 
         $validated = $request->validate([
             'locationId' => 'required|integer',
             'sportId' => 'required|integer',
-            'name' => 'required|string|max:255',
-            'startHour' => 'required|string', // format: 'HH:MM'
-            'endHour' => 'required|string',   // format: 'HH:MM'
+            'name' => 'required|string',
+            'startHour' => 'required|date_format:H:i',
+            'endHour' => 'required|date_format:H:i|after:startHour',
             'description' => 'required|string',
         ]);
 
-        $validated['locationId'] = $admin->location_id;
-
+        // Jika user adalah admin cabang, pakai lokasi miliknya
+        // if ($admin) {
+        //     $validated['locationId'] = $admin->location_id;
+        // }
         $field = Field::create($validated);
 
-        $startHour = Carbon::createFromFormat('H:i', $validated['startHour'])->hour;
-        $endHour = Carbon::createFromFormat('H:i', $validated['endHour'])->hour;
+        $start = Carbon::createFromFormat('H:i', $validated['startHour']);
+        $end = Carbon::createFromFormat('H:i', $validated['endHour']);
 
-        for ($hour = $startHour; $hour < $endHour; $hour++) {
+        while ($start < $end) {
             Time::create([
-                // Jika `timeId` auto increment, hapus baris ini
-                // 'timeId'  => optional,
-
-                'fieldId'   => $field->fieldId,
-                'time'      => Carbon::createFromTime($hour, 0, 0)->format('H:i:s'),
-                'status'    => 'Available',
-                'price'     => 100000,
+                'fieldId' => $field->fieldId,
+                'time'    => $start->format('H:i'),
+                'status'  => 'available',
+                'price'   => 100000,
             ]);
+
+            $start->addHour();
         }
+
 
         return response()->json([
             'success' => true,
             'time' => now()->toISOString(),
-            'message' => 'Lapangan berhasil ditambahkan',
-            'field' => $field
-        ], 201);
+        ]);
     }
-
-    // Untuk lokasi
-
 
     // Untuk olahraga
     public function getAllSports() {

@@ -13,6 +13,7 @@ class Field extends Model
     protected $primaryKey = 'fieldId';
 
     protected $fillable = ['locationId', 'sportId', 'name', 'description'];
+    protected $dates = ['deleted_at'];
 
     public function location()
     {

@@ -698,4 +698,111 @@ class ReservationController extends Controller
         ]);
     }
 
+//     public function userReservations(Request $request)
+// {
+//     $userId = $request->query('user_id');
+
+//     if (!$userId) {
+//         return response()->json([
+//             'success' => false,
+//             'message' => 'User ID is required'
+//         ], 400);
+//     }
+
+//     try {
+//         $reservations = Reservation::with([
+//             'details.field.location',
+//             'details.field.sport',
+//             'details.time',
+//             'user'
+//         ])
+//         ->where('userId', $userId)
+//         ->orderByDesc('created_at')
+//         ->get();
+
+//         if ($reservations->isEmpty()) {
+//             return response()->json([
+//                 'success' => true,
+//                 'message' => 'No reservations found for this user',
+//                 'data' => []
+//             ]);
+//         }
+
+//         $formattedReservations = $reservations->map(function ($reservation) {
+//             return [
+//                 'reservationId' => $reservation->reservationId,
+//                 'name' => $reservation->name,
+//                 'paymentStatus' => $reservation->paymentStatus,
+//                 'total' => $reservation->total,
+//                 'created_at' => $reservation->created_at,
+//                 'updated_at' => $reservation->updated_at,
+//                 'details' => $reservation->details->map(function ($detail) {
+//                     return [
+//                         'detailId' => $detail->detailId,
+//                         'fieldName' => $detail->field->name,
+//                         'locationName' => $detail->field->location->locationName,
+//                         'sportName' => $detail->field->sport->sportName,
+//                         'time' => $detail->time->time,
+//                         'date' => $detail->date,
+//                         'price' => $detail->time->price,
+//                     ];
+//                 }),
+//                 'user' => [
+//                     'userId' => $reservation->user->userId,
+//                     'name' => $reservation->user->name,
+//                     'email' => $reservation->user->email,
+//                 ]
+//             ];
+//         });
+
+//         return response()->json([
+//             'success' => true,
+//             'message' => 'User reservations retrieved successfully',
+//             'data' => $formattedReservations
+//         ]);
+
+//     } catch (\Exception $e) {
+//         return response()->json([
+//             'success' => false,
+//             'message' => 'Failed to retrieve user reservations',
+//             'error' => $e->getMessage()
+//         ], 500);
+//     }
+// }
+
+public function userReservations(Request $request)
+{
+    $userId = $request->query('user_id');
+
+    if (!$userId) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Parameter user_id wajib diisi.',
+            'data' => []
+        ], 400);
+    }
+
+    // Ambil semua reservasi dengan relasi user dan details
+    $reservations = Reservation::with(['details', 'user'])
+        ->where('userId', $userId)
+        ->get();
+
+    // Ambil 1 data user dari salah satu reservasi (karena user-nya pasti sama)
+    $user = $reservations->first()?->user;
+
+    // Hilangkan properti 'user' dari setiap item dalam data
+    $cleanedReservations = $reservations->map(function ($reservation) {
+        $res = $reservation->toArray();
+        unset($res['user']);
+        return $res;
+    });
+
+    return response()->json([
+        'success' => true,
+        'message' => 'User reservations retrieved successfully',
+        'user' => $user,
+        'data' => $cleanedReservations
+    ]);
+}
+
 }

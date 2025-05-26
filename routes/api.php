@@ -24,7 +24,7 @@ use App\Http\Controllers\API\HistoryController;
 |--------------------------------------------------------------------------
 */
 
-// Tes Deployment
+// Ini tes deployment
 // Auth Routes
 Auth::routes(['verify' => true]);
 // Register routes

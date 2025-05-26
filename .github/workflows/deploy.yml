@@ -28,7 +28,7 @@ jobs:
             cd /home/genzett/resports-compose
             echo "📦 Menarik update dari Git"
             cd backend/Backend-GenZett
-            git pull origin main
+            git pull origin development
             echo "🐳 Restart Docker Compose"
             cd ../../
             docker compose down

@@ -71,6 +71,8 @@ Route::group(['prefix' => 'reservations'], function () {
     Route::get('/sport', [ReservationController::class, 'getSports']);
     Route::get('/sport/{locationId}', [ReservationController::class, 'getSportsByLocation']);
     Route::get('/{locationId}/schedules', [ReservationController::class, 'getScheduleByLocation']);
+    // Route::get('/minimumPrice', [ReservationController::class, 'getMinPricePerLocation']);
+    Route::get('/{locationId}/minimumPrice', [ReservationController::class, 'getMinPriceByLocation']);
 
     
     Route::get('/', [ReservationController::class, 'index']);
@@ -86,11 +88,16 @@ Route::group(['prefix' => 'reservations'], function () {
 
 // Payment API routes
 Route::group(['prefix' => 'payments'], function () {
+    Route::post('/webhook', [PaymentController::class, 'webhook']);
+    Route::put('/{id}/status', [PaymentController::class, 'updatePaymentStatus']);
+    Route::get('/{id}/status', [PaymentController::class, 'getPaymentStatus']);
+
     Route::get('/', [PaymentController::class, 'index']);
     Route::post('/', [PaymentController::class, 'store']);
     Route::get('/{id}', [PaymentController::class, 'show']);
     Route::put('/{id}', [PaymentController::class, 'update']);
     Route::delete('/{id}', [PaymentController::class, 'destroy']);
+    Route::post('/webhook', [PaymentController::class, 'handleWebhook']);
 });
 // Membership API routes
 Route::group(['prefix' => 'memberships'], function () {

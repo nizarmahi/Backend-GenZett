@@ -6,52 +6,58 @@ use App\Http\Controllers\Controller;
 use App\Models\Payment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+// Impor yang benar untuk Xendit SDK versi 6.x
+use Xendit\Configuration;
+use Xendit\Invoice\InvoiceApi;
 
 class PaymentController extends Controller
 {
+    protected $invoiceApi;
+
+    public function __construct()
+    {
+        $apiKey = config('services.xendit.api_key');
+        $config = Configuration::getDefaultConfiguration()
+            ->setApiKey($apiKey);
+
+        $this->invoiceApi = new InvoiceApi(null, $config);
+    }
+
     /**
-     * Tampilkan semua data pembayaran
+     * Tampilkan semua Payment
      *
-     * @param Request $request
-     * @return \Illuminate\Http\JsonResponse
+     * @param \Illuminate\Http\Request $request
+     *
      */
     public function index(Request $request)
     {
         $page = (int)$request->input('page', 1);
         $limit = (int)$request->input('limit', 10);
 
-        $query = Payment::query();
-        $totalPayments = $query->count();
+        $query = Payment::with('reservation');
+        $total = $query->count();
         $offset = ($page - 1) * $limit;
 
         $payments = $query->skip($offset)->take($limit)->get();
 
         return response()->json([
             'success' => true,
-            'time' => now()->toISOString(),
-            'message' => 'Data pembayaran berhasil diambil',
-            'totalPayments' => $totalPayments,
-            'offset' => $offset,
-            'limit' => $limit,
+            'message' => 'Daftar pembayaran',
+            'total' => $total,
             'payments' => $payments
         ]);
     }
-
     /**
-     * Simpan data pembayaran baru
+     * Simpan data Payment baru
      *
-     * @param Request $request
-     * @return \Illuminate\Http\JsonResponse
+     * @param \Illuminate\Http\Request $request
+     *
      */
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'reservation_detail_id' => 'required|exists:reservation_details,id',
-            'payment_method' => 'required|string|max:255',
-            'payment_proof' => 'nullable|string|max:255',
-            'dp_price' => 'required|numeric|min:0',
-            'full_price' => 'required|numeric|min:0',
-            'status' => 'required|in:pending,confirmed,rejected'
+            'reservationId' => 'required|exists:reservations,reservationId',
+            'totalPaid' => 'required|numeric|min:0'
         ]);
 
         if ($validator->fails()) {
@@ -62,24 +68,51 @@ class PaymentController extends Controller
             ], 422);
         }
 
-        $payment = Payment::create($validator->validated());
+        try {
+            // Buat invoice Xendit untuk versi 6.x
+            $external_id = 'invoice-' . uniqid();
+            $createInvoiceRequest = [
+                'external_id' => $external_id,
+                'payer_email' => 'user@email.com', // ubah sesuai kebutuhan
+                'description' => 'Pembayaran reservasi',
+                'amount' => $request->totalPaid,
+            ];
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Pembayaran berhasil dibuat',
-            'payment' => $payment
-        ], 201);
+            $xenditInvoice = $this->invoiceApi->createInvoice($createInvoiceRequest);
+
+            $payment = Payment::create([
+                'reservationId' => $request->reservationId,
+                'invoiceDate' => now(),
+                'totalPaid' => $request->totalPaid,
+                'xendit_invoice_id' => $xenditInvoice->getId(),
+                'xendit_invoice_url' => $xenditInvoice->getInvoiceUrl(),
+                'xendit_status' => $xenditInvoice->getStatus(),
+                'expiry_date' => $xenditInvoice->getExpiryDate()
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Pembayaran berhasil dibuat',
+                'payment' => $payment
+            ], 201);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error saat membuat pembayaran',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
-
     /**
-     * Tampilkan detail pembayaran
+     * Tampilkan detail Payment
      *
      * @param int $id
-     * @return \Illuminate\Http\JsonResponse
+     *
      */
+
     public function show($id)
     {
-        $payment = Payment::with('reservationDetail')->find($id);
+        $payment = Payment::with('reservation')->find($id);
 
         if (!$payment) {
             return response()->json([
@@ -90,19 +123,18 @@ class PaymentController extends Controller
 
         return response()->json([
             'success' => true,
-            'time' => now()->toISOString(),
-            'message' => "Detail pembayaran dengan ID {$id}",
+            'message' => "Detail pembayaran",
             'payment' => $payment
         ]);
     }
-
     /**
-     * Perbarui data pembayaran
+     * Perbarui data Payment
      *
-     * @param Request $request
+     * @param \Illuminate\Http\Request $request
      * @param int $id
-     * @return \Illuminate\Http\JsonResponse
+     *
      */
+
     public function update(Request $request, $id)
     {
         $payment = Payment::find($id);
@@ -115,11 +147,8 @@ class PaymentController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'payment_method' => 'sometimes|required|string|max:255',
-            'payment_proof' => 'nullable|string|max:255',
-            'dp_price' => 'sometimes|required|numeric|min:0',
-            'full_price' => 'sometimes|required|numeric|min:0',
-            'status' => 'sometimes|required|in:pending,confirmed,rejected'
+            'totalPaid' => 'sometimes|required|numeric|min:0',
+            'xendit_status' => 'sometimes|required|string',
         ]);
 
         if ($validator->fails()) {
@@ -138,13 +167,13 @@ class PaymentController extends Controller
             'payment' => $payment
         ]);
     }
-
     /**
-     * Hapus pembayaran
+     * Hapus data Payment
      *
      * @param int $id
-     * @return \Illuminate\Http\JsonResponse
+     *
      */
+
     public function destroy($id)
     {
         $payment = Payment::find($id);
@@ -162,5 +191,62 @@ class PaymentController extends Controller
             'success' => true,
             'message' => 'Pembayaran berhasil dihapus'
         ]);
+    }
+    /**
+     * Webhook
+     *
+     * @param \Illuminate\Http\Request $request
+     */
+    // public function handleWebhook(Request $request)
+    // {
+    //     $data = $request->all();
+
+    //     // Validasi data masuk (optional, bisa pakai signature juga)
+    //     if (!isset($data['id']) || !isset($data['status'])) {
+    //         return response()->json(['message' => 'Invalid payload'], 400);
+    //     }
+
+    //     $payment = Payment::where('xendit_invoice_id', $data['id'])->firstOrFail();
+
+    //     if (!$payment) {
+    //         return response()->json(['message' => 'Payment not found'], 404);
+    //     }
+
+    //     $payment->update([
+    //         'xendit_status' => $data['status'],
+    //     ]);
+
+    //     // Jika invoice sudah dibayar, update juga status di tabel reservation
+    //     if ($data['status'] === 'PAID') {
+    //         $payment->reservation->update([
+    //             'paymentStatus' => 'PAID'
+    //         ]);
+    //     }
+
+    //     return response()->json(['message' => 'Webhook received'], 200);
+    // }
+    public function handleWebhook(Request $request)
+    {
+        $invoiceId = $request->input('id');
+        $invoice = $this->invoiceApi->getInvoiceById($invoiceId);
+        $payment = Payment::where('xendit_invoice_id', $invoice->getId())->first();
+        if (!$payment) {
+            return response()->json(['message' => 'Payment not found'], 404);
+        }
+        // validasi status invoice apakah sudah SETTLED
+        if ($invoice->getStatus() == 'SETTLED') {
+            return response()->json(['message' => 'Invoice already settled'], 400);
+        }
+        $payment->update([
+            'xendit_status' => $invoice->getStatus(),
+            'expiry_date' => $invoice->getExpiryDate()
+        ]);
+        // Jika invoice sudah dibayar, update juga status di tabel reservation
+        if ($invoice->getStatus() === 'PAID') {
+            $payment->reservation->update([
+                'paymentStatus' => 'PAID'
+            ]);
+        }
+        return response()->json(['message' => 'Webhook received'], 200);
     }
 }

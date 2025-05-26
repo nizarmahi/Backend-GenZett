@@ -3,7 +3,7 @@ name: Deploy Backend Laravel
 on:
   push:
     branches:
-      - development
+      - main
 
 jobs:
   deploy-backend:
@@ -21,8 +21,12 @@ jobs:
           key: ${{ secrets.BACKEND_SSH_KEY }}
           port: 22
           script: |
-            echo "Masuk ke VM Backend"
-            cd /home/pbluser/backend-genzett
+            echo "🚀 Masuk ke VM Backend"
+            cd /home/genzett/resports-compose
+            echo "📦 Menarik update dari Git"
+            cd backend/Backend-GenZett
             git pull origin main
+            echo "🐳 Restart Docker Compose"
+            cd ../../
             docker compose down
             docker compose up -d --build

@@ -23,7 +23,7 @@ use App\Http\Controllers\API\UserController;
 |--------------------------------------------------------------------------
 */
 
-// Tes Deploy
+// Tes Deployment
 // Auth Routes
 Auth::routes(['verify' => true]);
 // Register routes

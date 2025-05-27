@@ -132,6 +132,21 @@ class TestResponse implements ArrayAccess
     }
 
     /**
+     * Assert that the response is a client error.
+     *
+     * @return $this
+     */
+    public function assertClientError()
+    {
+        PHPUnit::withResponse($this)->assertTrue(
+            $this->isClientError(),
+            $this->statusMessageWithDetails('>=400, < 500', $this->getStatusCode())
+        );
+
+        return $this;
+    }
+
+    /**
      * Assert that the response is a server error.
      *
      * @return $this
@@ -214,6 +229,23 @@ class TestResponse implements ArrayAccess
     }
 
     /**
+     * Assert whether the response is redirecting back to the previous location.
+     *
+     * @return $this
+     */
+    public function assertRedirectBack()
+    {
+        PHPUnit::withResponse($this)->assertTrue(
+            $this->isRedirect(),
+            $this->statusMessageWithDetails('201, 301, 302, 303, 307, 308', $this->getStatusCode()),
+        );
+
+        $this->assertLocation(app('url')->previous());
+
+        return $this;
+    }
+
+    /**
      * Assert whether the response is redirecting to a given route.
      *
      * @param  \BackedEnum|string  $name
@@ -269,6 +301,27 @@ class TestResponse implements ArrayAccess
                 app('url')->to($uri), $expectedUri
             );
         }
+
+        return $this;
+    }
+
+    /**
+     * Assert whether the response is redirecting to a given controller action.
+     *
+     * @param  string|array  $name
+     * @param  array  $parameters
+     * @return $this
+     */
+    public function assertRedirectToAction($name, $parameters = [])
+    {
+        $uri = action($name, $parameters);
+
+        PHPUnit::withResponse($this)->assertTrue(
+            $this->isRedirect(),
+            $this->statusMessageWithDetails('201, 301, 302, 303, 307, 308', $this->getStatusCode()),
+        );
+
+        $this->assertLocation($uri);
 
         return $this;
     }
@@ -889,7 +942,7 @@ class TestResponse implements ArrayAccess
      * @param  array|null  $responseData
      * @return $this
      */
-    public function assertJsonStructure(?array $structure = null, $responseData = null)
+    public function assertJsonStructure(?array $structure = null, ?array $responseData = null)
     {
         $this->decodeResponseJson()->assertStructure($structure, $responseData);
 
@@ -903,7 +956,7 @@ class TestResponse implements ArrayAccess
      * @param  array|null  $responseData
      * @return $this
      */
-    public function assertExactJsonStructure(?array $structure = null, $responseData = null)
+    public function assertExactJsonStructure(?array $structure = null, ?array $responseData = null)
     {
         $this->decodeResponseJson()->assertStructure($structure, $responseData, true);
 
@@ -1192,21 +1245,21 @@ class TestResponse implements ArrayAccess
 
         $this->ensureResponseHasView();
 
-        if (is_null($value)) {
-            PHPUnit::withResponse($this)->assertTrue(Arr::has($this->original->gatherData(), $key));
-        } elseif ($value instanceof Closure) {
-            PHPUnit::withResponse($this)->assertTrue($value(Arr::get($this->original->gatherData(), $key)));
-        } elseif ($value instanceof Model) {
-            PHPUnit::withResponse($this)->assertTrue($value->is(Arr::get($this->original->gatherData(), $key)));
-        } elseif ($value instanceof EloquentCollection) {
-            $actual = Arr::get($this->original->gatherData(), $key);
+        $actual = Arr::get($this->original->gatherData(), $key);
 
+        if (is_null($value)) {
+            PHPUnit::withResponse($this)->assertTrue(Arr::has($this->original->gatherData(), $key), "Failed asserting that the data contains the key [{$key}].");
+        } elseif ($value instanceof Closure) {
+            PHPUnit::withResponse($this)->assertTrue($value($actual), "Failed asserting that the value at [{$key}] fulfills the expectations defined by the closure.");
+        } elseif ($value instanceof Model) {
+            PHPUnit::withResponse($this)->assertTrue($value->is($actual), "Failed asserting that the model at [{$key}] matches the given model.");
+        } elseif ($value instanceof EloquentCollection) {
             PHPUnit::withResponse($this)->assertInstanceOf(EloquentCollection::class, $actual);
             PHPUnit::withResponse($this)->assertSameSize($value, $actual);
 
-            $value->each(fn ($item, $index) => PHPUnit::withResponse($this)->assertTrue($actual->get($index)->is($item)));
+            $value->each(fn ($item, $index) => PHPUnit::withResponse($this)->assertTrue($actual->get($index)->is($item), "Failed asserting that the collection at [{$key}.[{$index}]]' matches the given collection."));
         } else {
-            PHPUnit::withResponse($this)->assertEquals($value, Arr::get($this->original->gatherData(), $key));
+            PHPUnit::withResponse($this)->assertEquals($value, $actual, "Failed asserting that [{$key}] matches the expected value.");
         }
 
         return $this;
@@ -1608,19 +1661,26 @@ class TestResponse implements ArrayAccess
      * Assert that the session does not have a given key.
      *
      * @param  string|array  $key
+     * @param  mixed  $value
      * @return $this
      */
-    public function assertSessionMissing($key)
+    public function assertSessionMissing($key, $value = null)
     {
         if (is_array($key)) {
             foreach ($key as $value) {
                 $this->assertSessionMissing($value);
             }
-        } else {
+        }
+
+        if (is_null($value)) {
             PHPUnit::withResponse($this)->assertFalse(
                 $this->session()->has($key),
                 "Session has unexpected key [{$key}]."
             );
+        } elseif ($value instanceof Closure) {
+            PHPUnit::withResponse($this)->assertTrue($value($this->session()->get($key)));
+        } else {
+            PHPUnit::withResponse($this)->assertEquals($value, $this->session()->get($key));
         }
 
         return $this;

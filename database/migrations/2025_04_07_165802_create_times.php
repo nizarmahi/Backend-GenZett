@@ -16,7 +16,7 @@ return new class extends Migration
             $table->unsignedBigInteger('fieldId');
             $table->foreign('fieldId')->references('fieldId')->on('fields')->onDelete('cascade');
             $table->time('time')->nullable();
-            $table->enum('status', ['available', 'booked'])->nullable();
+            $table->enum('status', ['available', 'non-available'])->default('available');
             $table->integer('price')->nullable();
             $table->timestamps();
         });

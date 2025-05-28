@@ -31,6 +31,7 @@ class ReservationController extends Controller
         $page = (int) $request->input('page', 1);
         $limit = (int) $request->input('limit', 10);
         $search = $request->input('search');
+        $locationId = $request->input('locationId');
         $paymentStatus = $request->input('paymentStatus');
         $date = $request->input('date');
 
@@ -40,21 +41,23 @@ class ReservationController extends Controller
             'details.time',
             'user'
         ])
-            ->orderByDesc('created_at');
-
-        if (!empty($paymentStatus)) {
+        ->when($locationId, function ($query) use ($locationId) {
+        $query->whereHas('details.field.location', function ($q) use ($locationId) {
+            $q->where('locationId', $locationId);
+        });
+        })
+        ->when($paymentStatus, function ($query) use ($paymentStatus) {
             $query->where('paymentStatus', $paymentStatus);
-        }
-
-        if (!empty($search)) {
+        })
+        ->when($search, function ($query) use ($search) {
             $query->where('name', 'like', '%' . $search . '%');
-        }
-
-        if (!empty($date)) {
+        })
+        ->when($date, function ($query) use ($date) {
             $query->whereHas('details', function ($q) use ($date) {
                 $q->where('date', $date);
             });
-        }
+        })
+        ->orderByDesc('created_at');
 
         $reservations = $query->paginate($limit, ['*'], 'page', $page);
 

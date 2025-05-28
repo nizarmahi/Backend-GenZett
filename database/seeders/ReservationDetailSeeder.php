@@ -55,12 +55,6 @@ class ReservationDetailSeeder extends Seeder
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
-
-            // Ubah status time menjadi 'booked'
-            DB::table('times')->where('timeId', $detail['timeId'])->update([
-                'status' => 'booked',
-                'updated_at' => now(),
-            ]);
         }
     }
 }

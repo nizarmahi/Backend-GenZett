@@ -39,7 +39,7 @@ class ScheduleController extends Controller
                 'sports.sportName as sport',
                 'reservations.paymentStatus'
             ])
-            ->whereIn('reservations.paymentStatus', ['pending', 'complete', 'dp']);
+            ->whereIn('reservations.paymentStatus', ['pending', 'complete', 'dp', 'closed']);
 
         if (!empty($sportId) && $sportId !== 'all') {
             $query->where('sports.sportId', $sportId);

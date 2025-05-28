@@ -16,7 +16,7 @@ return new class extends Migration
             $table->unsignedBigInteger('userId');
             $table->foreign('userId')->references('userId')->on('users')->onDelete('cascade');
             $table->string('name')->nullable();
-            $table->enum('status', ['pending', 'dp', 'complete', 'fail', 'closed'])->nullable();
+            $table->enum('paymentStatus', ['pending', 'dp', 'complete', 'fail', 'closed'])->nullable();
             $table->integer('total')->nullable();
             $table->timestamps();
         });

@@ -712,12 +712,17 @@ class Collection implements ArrayAccess, CanBeEscapedWhenCastToString, Enumerabl
     }
 
     /**
-     * Determine if the collection contains a single item.
+     * Determine if the collection contains exactly one item. If a callback is provided, determine if exactly one item matches the condition.
      *
+     * @param  (callable(TValue, TKey): bool)|null  $callback
      * @return bool
      */
-    public function containsOneItem()
+    public function containsOneItem(?callable $callback = null): bool
     {
+        if ($callback) {
+            return $this->filter($callback)->count() === 1;
+        }
+
         return $this->count() === 1;
     }
 
@@ -1462,8 +1467,8 @@ class Collection implements ArrayAccess, CanBeEscapedWhenCastToString, Enumerabl
     /**
      * Chunk the collection into chunks with a callback.
      *
-     * @param  callable(TValue, TKey, static<int, TValue>): bool  $callback
-     * @return static<int, static<int, TValue>>
+     * @param  callable(TValue, TKey, static<TKey, TValue>): bool  $callback
+     * @return static<int, static<TKey, TValue>>
      */
     public function chunkWhile(callable $callback)
     {

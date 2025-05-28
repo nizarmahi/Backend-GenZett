@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\API; // Perhatikan perubahan dari Api menjadi API
+namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
@@ -433,7 +433,7 @@ class ReservationController extends Controller
             $locations = DB::table('locations')
                 ->select(
                     'locations.locationId',
-                    'locations.locationName as name',
+                    'locations.locationName',
                     'locations.locationPath as imageUrl',
                     'locations.address',
                     DB::raw('MIN(times.price) as minPrice')
@@ -470,7 +470,7 @@ class ReservationController extends Controller
 
                 return [
                     'locationId' => $location->locationId,
-                    'name' => $location->name,
+                    'locationName' => $location->locationName,
                     'address' => $location->address,
                     'imageUrl' => $location->imageUrl
                         ? asset('storage/' . $location->imageUrl)
@@ -684,7 +684,7 @@ class ReservationController extends Controller
         $payment = Payment::create([
             'reservationId' => $reservation->reservationId,
             'invoiceDate' => now(),
-            'totalPaid' => $reservation->total/2,
+            'totalPaid' => $reservation->total / 2,
         ]);
 
         // Update status pembayaran di reservasi
@@ -697,5 +697,84 @@ class ReservationController extends Controller
             'payment' => $payment
         ]);
     }
+    /* Ambil Harga Minimum Berdasarkan LokasiId
+    *
+    * Mengambil harga minimum dari times untuk setiap lokasi.
+    *
+    * @return \Illuminate\Http\JsonResponse
+    */
+    public function getMinPriceByLocation($locationId)
+    {
+        try {
+            $minPrice = DB::table('fields')
+                ->join('times', 'fields.fieldId', '=', 'times.fieldId')
+                ->where('fields.locationId', $locationId)
+                ->min('times.price');
 
+            if ($minPrice === null) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Tidak ada harga ditemukan untuk lokasi ini.'
+                ], 404);
+            }
+
+            return response()->json([
+                'success' => true,
+                'locationId' => $locationId,
+                'minPrice' => 'Rp ' . number_format($minPrice, 0, ',', '.'),
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengambil harga minimum.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+    /* Ambil Harga Minimum Per Lokasi
+    *
+    * Mengambil harga minimum dari times untuk setiap lokasi.
+    *
+    * @return \Illuminate\Http\JsonResponse
+    */
+    public function getMinPricePerLocation()
+    {
+        try {
+            $locations = DB::table('locations')
+                ->select(
+                    'locations.locationId',
+                    'locations.locationName',
+                    'locations.locationPath as imageUrl',
+                    'locations.address',
+                    DB::raw('MIN(times.price) as minPrice')
+                )
+                ->leftJoin('fields', 'locations.locationId', '=', 'fields.locationId')
+                ->leftJoin('times', 'fields.fieldId', '=', 'times.fieldId')
+                ->groupBy('locations.locationId', 'locations.locationName', 'locations.locationPath', 'locations.address')
+                ->get();
+
+            $formattedLocations = $locations->map(function ($location) {
+                return [
+                    'locationId' => $location->locationId,
+                    'locationName' => $location->locationName,
+                    'address' => $location->address,
+                    'imageUrl' => $location->imageUrl
+                        ? asset('storage/' . $location->imageUrl)
+                        : asset('/images/futsal.png'),
+                    'minPrice' => $location->minPrice ? number_format($location->minPrice, 0, ',', '.') : 0,
+                ];
+            });
+
+            return response()->json([
+                'success' => true,
+                'data' => $formattedLocations,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengambil data harga minimum per lokasi.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
 }

@@ -23,7 +23,7 @@ class TimeSeeder extends Seeder
                     'fieldId'   => $field->fieldId,
                     'time'      => Carbon::createFromTime($hour, 0, 0)->format('H:i:s'),
                     'status'    => 'Available',
-                    'price'     => rand(100000, 200000),
+                    'price'     => rand(5, 10) * 10000,
                     'created_at'=> Carbon::now(),
                     'updated_at'=> Carbon::now(),
                 ]);

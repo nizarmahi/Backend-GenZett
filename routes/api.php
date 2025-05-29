@@ -17,6 +17,7 @@ use App\Http\Controllers\API\ScheduleController;
 use App\Http\Controllers\API\SportController;
 use App\Http\Controllers\API\UserController;
 use App\Http\Controllers\API\HistoryController;
+use App\Http\Controllers\API\SuperAdmin\DashboardController;
 
 /*
 |--------------------------------------------------------------------------
@@ -31,6 +32,12 @@ Auth::routes(['verify' => true]);
 Route::post('register', [AuthController::class, 'register']);
 Route::post('login', [AuthController::class, 'login']);
 Route::post('logout', [AuthController::class, 'logout']);
+
+// Dashboard routes
+// routes/api.php
+Route::prefix('superadmin')->group(function () {
+    Route::get('/dashboard', [DashboardController::class, 'index']);
+});
 
 // Public routes
 // Sport API routes

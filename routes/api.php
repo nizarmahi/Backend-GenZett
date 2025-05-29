@@ -18,6 +18,7 @@ use App\Http\Controllers\API\SportController;
 use App\Http\Controllers\API\UserController;
 use App\Http\Controllers\API\HistoryController;
 use App\Http\Controllers\API\SuperAdmin\DashboardController;
+use App\Http\Controllers\API\Admin\AdminDashboardController;
 
 /*
 |--------------------------------------------------------------------------
@@ -37,6 +38,10 @@ Route::post('logout', [AuthController::class, 'logout']);
 // routes/api.php
 Route::prefix('superadmin')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index']);
+});
+
+Route::prefix('admin')->group(function () {
+    Route::get('/dashboard/{locationId}', [AdminDashboardController::class, 'getDashboardAdmin']);
 });
 
 // Public routes

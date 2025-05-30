@@ -139,6 +139,58 @@ class UserController extends Controller
     }
 
     /**
+     * Ubah Password Pengguna
+     *
+     * Mengubah password pengguna berdasarkan ID.
+     *
+     * @param Request $request
+     * @param int $id
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function changePassword(Request $request, $id)
+    {
+        $user = User::find($id);
+    
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => "User dengan ID {$id} tidak ditemukan"
+            ], 404);
+        }
+    
+        // Validasi input
+        $validator = Validator::make($request->all(), [
+            'current_password' => 'required|string',
+            'new_password' => 'required|string|min:8|confirmed',
+        ]);
+    
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validasi gagal',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+    
+        // Periksa password lama
+        if (!Hash::check($request->current_password, $user->password)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Password lama tidak cocok'
+            ], 403);
+        }
+    
+        // Update password
+        $user->password = Hash::make($request->new_password);
+        $user->save();
+    
+        return response()->json([
+            'success' => true,
+            'message' => 'Password berhasil diperbarui'
+        ]);
+    }
+
+    /**
      * Hapus Pengguna
      *
      * Menghapus pengguna berdasarkan ID.

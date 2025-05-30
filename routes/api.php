@@ -124,6 +124,7 @@ Route::group(['prefix' => 'users'], function () {
     Route::get('/', [UserController::class, 'index']);
     Route::get('/{id}', [UserController::class, 'show']);
     Route::put('/{id}', [UserController::class, 'update']);
+    Route::put('/{id}/change-password', [UserController::class, 'changePassword']);
     Route::delete('/{id}', [UserController::class, 'destroy']);
 });
 

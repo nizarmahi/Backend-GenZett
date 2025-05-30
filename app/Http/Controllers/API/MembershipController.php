@@ -56,7 +56,9 @@ class MembershipController extends Controller
                 'description' => $membership->description,
                 'discount' => $membership->discount,
                 'weeks' => $membership->weeks,
+                'locationId' => $membership->locations->locationId,
                 'locationName' => $membership->locations->locationName ?? null,
+                'sportId' => $membership->sports->sportId,
                 'sportName' => $membership->sports->sportName ?? null,
             ];
         });

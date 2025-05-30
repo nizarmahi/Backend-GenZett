@@ -33,6 +33,8 @@ Auth::routes(['verify' => true]);
 Route::post('register', [AuthController::class, 'register']);
 Route::post('login', [AuthController::class, 'login']);
 Route::post('logout', [AuthController::class, 'logout']);
+Route::put('editAdminProfile/{id}', [AuthController::class, 'editAdminProfile']);
+Route::middleware('auth:api')->post('change-password', [AuthController::class, 'changePassword']);
 
 // Dashboard routes
 // routes/api.php

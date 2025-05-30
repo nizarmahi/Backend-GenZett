@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
+use App\Models\Admin;
 use Illuminate\Http\Request;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
@@ -100,8 +101,10 @@ class AuthController extends Controller
         $customClaims = [
             'role' => $user->role,
             'user_id' => $user->userId,
+            'name' => $user->name,
             'email' => $user->email,
             'phone' => $user->phone,
+            'created_at' => $user->created_at,
         ];
         if ($user->role === 'admin' && $user->admin) {
             $customClaims['locationId'] = $user->admin->locationId;
@@ -125,4 +128,48 @@ class AuthController extends Controller
             'message' => 'You have been logged out successfully.'
         ]);
     }
+    public function editAdminProfile(Request $request, $id)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'phone' => 'required|string|max:255',
+        ]);
+
+        $admin = Admin::findOrFail($id);
+        
+        $user = User::findOrFail($admin->userId);
+        $user->update([
+            'name' => $validated['name'],
+            'phone' => $validated['phone'],
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'time' => now()->toISOString(),
+            'message' => 'Admin berhasil diperbarui',
+            'admin' => $admin,
+            'user' => $user
+        ]);
+    }
+    public function changePassword(Request $request)
+    {
+        $request->validate([
+            'oldPassword' => 'required|string|min:8',
+            'newPassword' => 'required|string|min:8',
+        ]);
+
+        $user = $request->user();
+
+        if (!Hash::check($request->oldPassword, $user->password)) {
+            throw ValidationException::withMessages([
+                'oldPassword' => ['Password lama tidak sesuai.'],
+            ]);
+        }
+
+        $user->password = Hash::make($request->newPassword);
+        $user->save();
+
+        return response()->json(['message' => 'Password berhasil diubah'], 200);
+    }
+
 }

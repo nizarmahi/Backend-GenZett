@@ -29,8 +29,9 @@ class UserController extends Controller
         $query = User::where('role', 'user');
 
         if (!empty($search)) {
-            $query->search($search);
+            $query->where('name', 'like', '%' . $search . '%');
         }
+
         $totalUsers = $query->count();
 
         // Calculate offset

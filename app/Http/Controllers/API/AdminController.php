@@ -137,6 +137,7 @@ class AdminController extends Controller
             'email' => 'required|string|email|max:255|unique:users,email,' . $admin->userId . ',userId',
             'phone' => 'required|string|max:255',
             'locationId' => 'required|integer',
+            'password' => 'nullable|string|min:8|confirmed',
         ]);
 
         $admin = Admin::findOrFail($id);
@@ -146,13 +147,20 @@ class AdminController extends Controller
             'locationId' => $validated['locationId']
         ]);
         
-        // Update the associated User model
+        // Update User
         $user = User::findOrFail($admin->userId);
-        $user->update([
+        $userData = [
             'name' => $validated['name'],
             'email' => $validated['email'],
             'phone' => $validated['phone'],
-        ]);
+        ];
+
+        // Jika password diisi, hash dan update
+        if (!empty($validated['password'])) {
+            $userData['password'] = bcrypt($validated['password']);
+        }
+
+        $user->update($userData);
 
         return response()->json([
             'success' => true,

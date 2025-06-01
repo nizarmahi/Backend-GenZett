@@ -247,22 +247,21 @@ class ReservationController extends Controller
 
         $details = collect($request->details);
 
-        // Cek konflik
         $conflicts = [];
         foreach ($details as $detail) {
             foreach ($detail['timeIds'] as $timeId) {
-                $exists = ReservationDetail::join('times', 'reservation_details.timeId', '=', 'times.timeId')
-                    ->where('reservation_details.fieldId', $detail['fieldId'])
-                    ->where('reservation_details.timeId', $timeId)
-                    ->where('reservation_details.date', $detail['date'])
-                    ->where('times.status', 'booked')
-                    ->first();
+                // Cek apakah sudah ada reservasi dengan fieldId, timeId, dan date yang sama
+                $existingReservation = ReservationDetail::where('fieldId', $detail['fieldId'])
+                    ->where('timeId', $timeId)
+                    ->where('date', $detail['date'])
+                    ->exists();
 
-                if ($exists) {
+                if ($existingReservation) {
                     $conflicts[] = [
                         'fieldId' => $detail['fieldId'],
                         'timeId' => $timeId,
                         'date' => $detail['date'],
+                        'message' => 'Lapangan dan jam sudah dipesan pada tanggal tersebut.'
                     ];
                 }
             }

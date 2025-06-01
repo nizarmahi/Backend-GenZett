@@ -57,7 +57,7 @@ class MembershipModelTest extends TestCase
 #[Test]
     public function it_has_correct_fillable_attributes()
     {
-        $expectedFillable = ['locationId', 'sportId', 'name', 'description', 'price', 'weeks'];
+        $expectedFillable = ['locationId', 'sportId', 'name', 'description', 'discount', 'weeks'];
         $membership = new Membership();
 
         $this->assertEquals($expectedFillable, $membership->getFillable());

@@ -47,7 +47,7 @@ class ReservationModelTest extends TestCase
 #[Test]
     public function it_has_correct_fillable_attributes()
     {
-        $fillable = ['userId', 'name', 'paymentStatus', 'total'];
+        $fillable = ['userId', 'name', 'paymentStatus', 'total', 'paymentType'];
         $reservation = new Reservation();
 
         $this->assertEquals($fillable, $reservation->getFillable());

@@ -72,8 +72,9 @@ it('can create a new field', function () {
         'locationId' => $this->location->locationId,
         'sportId' => $this->sport->sportId,
         'name' => 'Lapangan Baru',
-        'startHour' => '08:00',
-        'endHour' => '10:00',
+        'startHour' => '00:00',
+        'endHour' => '23:59',
+        'price' => 150000,
         'description' => 'Deskripsi lapangan baru',
     ];
 
@@ -98,8 +99,9 @@ it('can update an existing field', function () {
         'locationId' => $this->location->locationId,
         'sportId' => $this->sport->sportId,
         'name' => 'Nama Lapangan Updated',
-        'startHour' => '09:00',
-        'endHour' => '11:00',
+        'startHour' => '00:00',
+        'endHour' => '23:59',
+        'price' => 150000,
         'description' => 'Deskripsi updated',
     ];
 

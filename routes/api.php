@@ -17,6 +17,8 @@ use App\Http\Controllers\API\ScheduleController;
 use App\Http\Controllers\API\SportController;
 use App\Http\Controllers\API\UserController;
 use App\Http\Controllers\API\HistoryController;
+use App\Http\Controllers\API\SuperAdmin\DashboardController;
+use App\Http\Controllers\API\Admin\AdminDashboardController;
 
 /*
 |--------------------------------------------------------------------------
@@ -36,6 +38,16 @@ Route::middleware('auth:api')->group(function () {
     Route::post('change-password', [AuthController::class, 'changePassword']);
 });
 
+
+// Dashboard routes
+// routes/api.php
+Route::prefix('superadmin')->group(function () {
+    Route::get('/dashboard', [DashboardController::class, 'index']);
+});
+
+Route::prefix('admin')->group(function () {
+    Route::get('/dashboard/{locationId}', [AdminDashboardController::class, 'getDashboardAdmin']);
+});
 
 // Public routes
 // Sport API routes
@@ -127,6 +139,7 @@ Route::group(['prefix' => 'users'], function () {
     Route::get('/', [UserController::class, 'index']);
     Route::get('/{id}', [UserController::class, 'show']);
     Route::put('/{id}', [UserController::class, 'update']);
+    Route::put('/{id}/change-password', [UserController::class, 'changePassword']);
     Route::delete('/{id}', [UserController::class, 'destroy']);
 });
 

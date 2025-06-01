@@ -17,7 +17,8 @@ return new class extends Migration
             $table->unsignedBigInteger('sportId');
             $table->string('name', 25);
             $table->text('description')->nullable();
-            $table->decimal('discount', 8, 2)->default(0);
+            // $table->decimal('discount');
+            $table->decimal('price');
             $table->smallInteger('weeks');
             $table->timestamps();
             $table->foreign('locationId')->references('locationId')->on('locations')->onDelete('cascade');

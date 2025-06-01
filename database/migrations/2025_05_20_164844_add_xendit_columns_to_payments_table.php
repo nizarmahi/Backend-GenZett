@@ -16,7 +16,9 @@ return new class extends Migration
             $table->string('xendit_invoice_url')->nullable()->after('xendit_invoice_id');
             $table->string('xendit_status')->nullable()->after('xendit_invoice_url');
             $table->dateTime('expiry_date')->nullable()->after('xendit_status');
-            //
+            $table->string('success_redirect_url')->nullable()->after('expiry_date');
+            $table->string('failure_redirect_url')->nullable()->after('success_redirect_url');
+            $table->string('payment_method')->nullable()->after('failure_redirect_url');
         });
     }
 

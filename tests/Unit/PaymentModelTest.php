@@ -27,7 +27,10 @@ class PaymentModelTest extends TestCase
 #[Test]
     public function it_casts_invoice_date_and_expiry_date_to_datetime()
     {
+        $reservation = Reservation::factory()->create();
         $payment = Payment::factory()->create([
+            'reservationId' => $reservation->reservation->reservationId,
+            'totalPaid' => $reservation->reservation->total,
             'invoiceDate' => '2024-01-15 10:30:00',
             'expiry_date' => '2024-01-20 23:59:59'
         ]);

@@ -18,7 +18,7 @@ class MembershipFactory extends Factory
             'sportId' => Sport::factory(),       // otomatis buat Sport jika belum ada
             'name' => $this->faker->unique()->words(2, true),
             'description' => $this->faker->sentence(),
-            'price' => $this->faker->randomFloat(2, 10000, 100000), // harga antara 10rb–100rb
+            'discount' => $this->faker->randomFloat(2, 15, 5), // harga antara 10rb–100rb
             'weeks' => $this->faker->numberBetween(1, 12), // 1–12 minggu
         ];
     }

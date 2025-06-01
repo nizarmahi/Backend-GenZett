@@ -88,7 +88,7 @@ Route::group(['prefix' => 'reservations'], function () {
     // Route::get('/minimumPrice', [ReservationController::class, 'getMinPricePerLocation']);
     Route::get('/{locationId}/minimumPrice', [ReservationController::class, 'getMinPriceByLocation']);
 
-    
+
     Route::get('/', [ReservationController::class, 'index']);
     Route::post('/', [ReservationController::class, 'store']);
     Route::get('/user', [ReservationController::class, 'userReservations']);

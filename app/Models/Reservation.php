@@ -12,7 +12,11 @@ class Reservation extends Model
     protected $primaryKey = 'reservationId';
 
     protected $fillable = [
-        'userId', 'name', 'paymentStatus', 'total'
+        'userId',
+        'name',
+        'paymentStatus',
+        'total',
+        'paymentType'
     ];
 
     public function user()
@@ -28,5 +32,10 @@ class Reservation extends Model
     public function payment()
     {
         return $this->hasOne(Payment::class, 'reservationId');
+    }
+    public function membership()
+    {
+        return $this->belongsToMany(Membership::class, 'reservation_members', 'reservationId', 'membershipId')->withTimestamps();
+
     }
 }

@@ -11,6 +11,7 @@ class ReservationSeeder extends Seeder
     public function run(): void
     {
         $reservations = [];
+        $type = ['reguler', 'membership'];
         $statusReservation = ['pending', 'dp', 'complete', 'fail'];
         $name = [
             'Regular Match', 'Tournament', 'Training Session', 'Friendly Game',
@@ -23,11 +24,17 @@ class ReservationSeeder extends Seeder
             $status = $statusReservation[array_rand($statusReservation)];
             $event = $name[array_rand($name)] . ' ' . ($i % 10 + 1);
             $total = rand(10, 25) * 10000;
+            if ($i % 20 == 0) {
+                $typeReservation = $type[1];
+            } else {
+                $typeReservation = $type[0];
+            }
 
             $reservations[] = [
                 'userId' => $userId,
                 'name' => $event,
                 'paymentStatus' => $status,
+                'paymentType' => $typeReservation,
                 'total' => $total,
                 'created_at' => now(),
                 'updated_at' => now()

@@ -40,14 +40,20 @@ class User extends Authenticatable implements JWTSubject, MustVerifyEmail
         return [];
     }
 
+    public function scopeSearch($query, $term)
+    {
+        $term = "%{$term}%";
+
+        return $query->where(function ($q) use ($term) {
+            $q->where('name', 'like', $term)
+                ->orWhere('email', 'like', $term)
+                ->orWhere('phone', 'like', $term);
+        });
+    }
+
     public function reservations()
     {
         return $this->hasMany(Reservation::class, 'userId');
-    }
-
-    public function member()
-    {
-        return $this->hasOne(Membership::class, 'userId');
     }
 
     public function admin()

@@ -31,8 +31,11 @@ Auth::routes(['verify' => true]);
 Route::post('register', [AuthController::class, 'register']);
 Route::post('login', [AuthController::class, 'login']);
 Route::post('logout', [AuthController::class, 'logout']);
-Route::put('editAdminProfile/{id}', [AuthController::class, 'editAdminProfile']);
-Route::middleware('auth:api')->post('change-password', [AuthController::class, 'changePassword']);
+Route::middleware('auth:api')->group(function () {
+    Route::put('editAdminProfile/{id}', [AuthController::class, 'editAdminProfile']);
+    Route::post('change-password', [AuthController::class, 'changePassword']);
+});
+
 
 // Public routes
 // Sport API routes
@@ -76,7 +79,7 @@ Route::group(['prefix' => 'reservations'], function () {
     // Route::get('/minimumPrice', [ReservationController::class, 'getMinPricePerLocation']);
     Route::get('/{locationId}/minimumPrice', [ReservationController::class, 'getMinPriceByLocation']);
 
-    
+
     Route::get('/', [ReservationController::class, 'index']);
     Route::post('/', [ReservationController::class, 'store']);
     Route::get('/user', [ReservationController::class, 'userReservations']);

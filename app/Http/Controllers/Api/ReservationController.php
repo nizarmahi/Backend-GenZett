@@ -636,7 +636,7 @@ class ReservationController extends Controller
                             'timeId' => $slot->timeId,
                             'time' => $slot->time,
                             'price' => 'Rp ' . number_format($slot->price, 0, ',', '.'),
-                            'status' => $isReserved ? 'booked' : 'available',
+                            'status' => $isReserved ? 'non-available' : 'available',
                         ];
                     });
 

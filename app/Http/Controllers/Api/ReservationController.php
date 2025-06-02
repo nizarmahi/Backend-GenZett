@@ -593,11 +593,6 @@ class ReservationController extends Controller
 
             $dates = collect();
             $current = strtotime($startDate);
-            $startDate = now()->format('Y-m-d');
-            $endDate = now()->addDays(7)->format('Y-m-d');
-
-            $dates = collect();
-            $current = strtotime($startDate);
             $end = strtotime($endDate);
 
             while ($current <= $end) {
@@ -607,7 +602,6 @@ class ReservationController extends Controller
 
             $sportName = $request->query('sportName');
 
-            // Ambil semua sportName yang tersedia di lokasi tersebut
             $availableSports = DB::table('fields')
                 ->join('sports', 'fields.sportId', '=', 'sports.sportId')
                 ->where('fields.locationId', $locationId)
@@ -615,7 +609,6 @@ class ReservationController extends Controller
                 ->distinct()
                 ->get();
 
-            // Jika sportName tidak diisi atau tidak ditemukan
             $matchedSport = $availableSports->first(function ($sport) use ($sportName) {
                 return strtolower($sport->sportName) === strtolower($sportName);
             });
@@ -625,17 +618,24 @@ class ReservationController extends Controller
                     'success' => true,
                     'locationId' => $locationId,
                     'available_sports' => $availableSports->pluck('sportName'),
-                    'fields' => [], // tidak ada jadwal
+                    'fields' => [],
                 ]);
             }
 
             $sportId = $matchedSport->sportId;
 
-            // Ambil semua field berdasarkan locationId dan sportId
+            // Get all fields for the location and sport
             $fields = DB::table('fields')
                 ->where('locationId', $locationId)
                 ->where('sportId', $sportId)
                 ->get();
+
+            // Preload all existing reservations for these fields and dates
+            $existingReservations = DB::table('reservation_details')
+                ->whereIn('fieldId', $fields->pluck('fieldId'))
+                ->whereIn('date', $dates)
+                ->get()
+                ->groupBy(['date', 'fieldId', 'timeId']);
 
             $scheduleData = [];
 
@@ -648,18 +648,15 @@ class ReservationController extends Controller
                 $dailySchedules = [];
 
                 foreach ($dates as $date) {
-                    $slots = $timeSlots->map(function ($slot) use ($field, $date) {
-                        $isReserved = DB::table('reservation_details')
-                            ->where('fieldId', $field->fieldId)
-                            ->where('timeId', $slot->timeId)
-                            ->where('date', $date)
-                            ->exists();
+                    $slots = $timeSlots->map(function ($slot) use ($field, $date, $existingReservations) {
+                        $isBooked = isset($existingReservations[$date][$field->fieldId][$slot->timeId]);
 
                         return [
                             'timeId' => $slot->timeId,
                             'time' => $slot->time,
                             'price' => 'Rp ' . number_format($slot->price, 0, ',', '.'),
-                            'status' => $isReserved ? 'non-available' : 'available',
+                            'status' => $isBooked ? 'booked' : 'available',
+                            'isBooked' => $isBooked
                         ];
                     });
 

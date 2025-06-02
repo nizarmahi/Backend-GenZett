@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Route;
 
 use App\Http\Controllers\API\AdminController;
 use App\Http\Controllers\API\AuthController;
+use App\Http\Controllers\API\ClosedController;
 use App\Http\Controllers\API\FieldController;
 use App\Http\Controllers\API\JWTAuth;
 use App\Http\Controllers\API\LocationController;
@@ -62,11 +63,15 @@ Route::group(['prefix' => 'locations'], function () {
 Route::group(['prefix' => 'fields'], function () {
     Route::get('/', [FieldController::class, 'index']);
     Route::post('/', [FieldController::class, 'store']);
+    Route::get('/allFields', [FieldController::class, 'getAllFields']);
     Route::get('/{id}', [FieldController::class, 'show']);
     Route::put('/{id}', [FieldController::class, 'update']);
     Route::delete('/{id}', [FieldController::class, 'delete']);
 });
-
+Route::group(['prefix' => 'closed'], function () {
+    Route::get('/', [ClosedController::class, 'index']);
+    Route::post('/', [ClosedController::class, 'store']);
+});
 // Reservation API routes
 Route::group(['prefix' => 'reservations'], function () {
     Route::get('/location', [ReservationController::class, 'getAllLocations']);

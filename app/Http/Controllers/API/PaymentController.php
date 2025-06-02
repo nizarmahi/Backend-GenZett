@@ -4,8 +4,10 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use App\Models\Payment;
+use App\Models\Reservation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Log;
 // Impor yang benar untuk Xendit SDK versi 6.x
 use Xendit\Configuration;
 use Xendit\Invoice\InvoiceApi;
@@ -68,14 +70,30 @@ class PaymentController extends Controller
             ], 422);
         }
 
+        $id = $request->reservationId;
+        $reservation = Reservation::find($id);
+        $reservationTotal = $reservation->total;
+        $totalPaid = $request->totalPaid;
+
+        if ($reservationTotal != $totalPaid) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Total yang diberikan tidak sama',
+                'total reservation' => $reservationTotal,
+                'total bayar' => $totalPaid
+            ]);
+        }
+
         try {
-            // Buat invoice Xendit untuk versi 6.x
             $external_id = 'invoice-' . uniqid();
             $createInvoiceRequest = [
                 'external_id' => $external_id,
                 'payer_email' => 'user@email.com', // ubah sesuai kebutuhan
                 'description' => 'Pembayaran reservasi',
                 'amount' => $request->totalPaid,
+                'payment_methods' => ['QRIS'],
+                'success_redirect_url' => 'https://github.com',
+                'failure_redirect_url' => 'https://google.com'
             ];
 
             $xenditInvoice = $this->invoiceApi->createInvoice($createInvoiceRequest);
@@ -87,7 +105,10 @@ class PaymentController extends Controller
                 'xendit_invoice_id' => $xenditInvoice->getId(),
                 'xendit_invoice_url' => $xenditInvoice->getInvoiceUrl(),
                 'xendit_status' => $xenditInvoice->getStatus(),
-                'expiry_date' => $xenditInvoice->getExpiryDate()
+                'expiry_date' => $xenditInvoice->getExpiryDate(),
+                'payment_methods' => ['QRIS'],
+                'success_redirect_url' => 'https://github.com',
+                'failure_redirect_url' => 'https://google.com'
             ]);
 
             return response()->json([
@@ -103,6 +124,7 @@ class PaymentController extends Controller
             ], 500);
         }
     }
+
     /**
      * Tampilkan detail Payment
      *
@@ -244,7 +266,7 @@ class PaymentController extends Controller
         // Jika invoice sudah dibayar, update juga status di tabel reservation
         if ($invoice->getStatus() === 'PAID') {
             $payment->reservation->update([
-                'paymentStatus' => 'PAID'
+                'paymentStatus' => 'complete'
             ]);
         }
         return response()->json(['message' => 'Webhook received'], 200);

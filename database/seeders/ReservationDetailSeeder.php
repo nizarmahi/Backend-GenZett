@@ -10,51 +10,43 @@ class ReservationDetailSeeder extends Seeder
 {
     public function run(): void
     {
-        $details = [
-            [
-                'reservationId' => 1,
-                'fieldId' => 1,
-                'timeId' => 1,
-                'date' => Carbon::now()->format('Y-m-d'),
-            ],
-            [
-                'reservationId' => 1,
-                'fieldId' => 1,
-                'timeId' => 2,
-                'date' => Carbon::now()->format('Y-m-d'),
-            ],
-            [
-                'reservationId' => 2,
-                'fieldId' => 2,
-                'timeId' => 2,
-                'date' => Carbon::now()->format('Y-m-d'),
-            ],
-            [
-                'reservationId' => 3,
-                'fieldId' => 3,
-                'timeId' => 3,
-                'date' => Carbon::now()->format('Y-m-d'),
-            ],
-            [
-                'reservationId' => 4,
-                'fieldId' => 4,
-                'timeId' => 4,
-                'date' => Carbon::now()->format('Y-m-d'),
-            ],
-            [
-                'reservationId' => 5,
-                'fieldId' => 5,
-                'timeId' => 5,
-                'date' => Carbon::now()->format('Y-m-d'),
-            ],
+        $details = [];
+
+        $months = [
+            ['start' => '2025-02-01', 'end' => '2025-02-28'],
+            ['start' => '2025-03-01', 'end' => '2025-03-31'],
+            ['start' => '2025-04-01', 'end' => '2025-04-30'],
+            ['start' => '2025-05-01', 'end' => '2025-05-31'],
         ];
 
-        foreach ($details as $detail) {
-            DB::table('reservation_details')->insert([
-                ...$detail,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
+        for ($reservationId = 1; $reservationId <= 50; $reservationId++) {
+            // Pick random month
+            $month = $months[array_rand($months)];
+            $start = Carbon::parse($month['start']);
+            $end = Carbon::parse($month['end']);
+
+            // Random date within month
+            $daysDiff = $start->diffInDays($end);
+            $randomDays = rand(0, $daysDiff);
+            $date = $start->copy()->addDays($randomDays);
+
+            // Field and time slots (1-3 consecutive slots)
+            $fieldId = rand(1, 10);
+            $timeSlotCount = rand(1, 3);
+            $firstTimeId = rand(1, 15 - $timeSlotCount); // Assuming 15 time slots
+
+            for ($j = 0; $j < $timeSlotCount; $j++) {
+                $details[] = [
+                    'reservationId' => $reservationId,
+                    'fieldId' => $fieldId,
+                    'timeId' => $firstTimeId + $j,
+                    'date' => $date->format('Y-m-d'),
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ];
+            }
         }
+
+        DB::table('reservation_details')->insert($details);
     }
 }

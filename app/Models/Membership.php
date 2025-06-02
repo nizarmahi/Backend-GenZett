@@ -12,7 +12,7 @@ class Membership extends Model
 
     protected $primaryKey = 'membershipId';
 
-    protected $fillable = ['locationId','sportId', 'name', 'description', 'price', 'weeks'];
+    protected $fillable = ['locationId', 'sportId', 'name', 'description', 'discount', 'weeks'];
     protected $casts = [
         'created_at' => 'datetime',
     ];
@@ -25,5 +25,9 @@ class Membership extends Model
     public function locations()
     {
         return $this->belongsTo(Location::class, 'locationId', 'locationId');
+    }
+    public function reservations()
+    {
+        return $this->belongsToMany(Reservation::class, 'reservation_members');
     }
 }

@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use App\Models\Reservation;
 use App\Models\ReservationDetail;
 use App\Models\Field;
+use App\Models\Membership;
 use App\Models\Payment;
 use App\Models\Time;
 use Illuminate\Support\Facades\Validator;
@@ -33,6 +34,7 @@ class ReservationController extends Controller
         $search = $request->input('search');
         $locationId = $request->input('locationId');
         $paymentStatus = $request->input('paymentStatus');
+        $paymentType = $request->input('paymentType');
         $date = $request->input('date');
 
         $query = Reservation::with([
@@ -41,23 +43,26 @@ class ReservationController extends Controller
             'details.time',
             'user'
         ])
-        ->when($locationId, function ($query) use ($locationId) {
-        $query->whereHas('details.field.location', function ($q) use ($locationId) {
-            $q->where('locationId', $locationId);
-        });
-        })
-        ->when($paymentStatus, function ($query) use ($paymentStatus) {
-            $query->where('paymentStatus', $paymentStatus);
-        })
-        ->when($search, function ($query) use ($search) {
-            $query->where('name', 'like', '%' . $search . '%');
-        })
-        ->when($date, function ($query) use ($date) {
-            $query->whereHas('details', function ($q) use ($date) {
-                $q->where('date', $date);
-            });
-        })
-        ->orderByDesc('created_at');
+            ->when($locationId, function ($query) use ($locationId) {
+                $query->whereHas('details.field.location', function ($q) use ($locationId) {
+                    $q->where('locationId', $locationId);
+                });
+            })
+            ->when($paymentStatus, function ($query) use ($paymentStatus) {
+                $query->where('paymentStatus', $paymentStatus);
+            })
+            ->when($paymentType, function ($query) use ($paymentType) {
+                $query->where('paymentType', $paymentType);
+            })
+            ->when($search, function ($query) use ($search) {
+                $query->where('name', 'like', '%' . $search . '%');
+            })
+            ->when($date, function ($query) use ($date) {
+                $query->whereHas('details', function ($q) use ($date) {
+                    $q->where('date', $date);
+                });
+            })
+            ->orderByDesc('created_at');
 
         $reservations = $query->paginate($limit, ['*'], 'page', $page);
 
@@ -70,6 +75,7 @@ class ReservationController extends Controller
                     // 'userId' => $reservation->userId,
                     'name' => $reservation->name,
                     'paymentStatus' => $reservation->paymentStatus,
+                    'paymentType' => $reservation->paymentType,
                     'total' => $reservation->total,
                     'created_at' => $reservation->created_at,
                     'status' => 'upcoming',
@@ -90,14 +96,6 @@ class ReservationController extends Controller
     }
 
     /**
-     * Ambil Reservasi di lokasi tertentu
-     *
-     * Mengambil semua reservasi berdasarkan lokasi dan olahraga.
-     *
-     */
-    public function getReservationsByLocation(Request $request, $locationId) {}
-
-    /**
      * Buat Reservasi Baru
      *
      * Membuat reservasi baru dengan detail lapangan dan waktu.
@@ -109,6 +107,7 @@ class ReservationController extends Controller
      * @bodyParam details.*.date string required The date for the reservation in Y-m-d format. Example: 2025-05-15
      * @bodyParam name string optional The name for this reservation. Example: "Weekend Match"
      * @bodyParam paymentStatus string optional The payment status (pending, paid, cancelled). Example: pending
+     * @bodyParam paymentType string optional The payment type (reguler, membership). Example: reguler
      *
      * @response {
      *   "message": "Reservasi berhasil dibuat",
@@ -117,6 +116,7 @@ class ReservationController extends Controller
      *      "userId": 6,
      *      "name": "Booking 1",
      *       "paymentStatus": "pending",
+     *       "paymentType": "reguler",
      *       "total": 150000,
      *
      *
@@ -215,6 +215,7 @@ class ReservationController extends Controller
             'details.*.date' => 'required|date',
             'name' => 'sometimes|string|max:255',
             'paymentStatus' => 'sometimes|string|in:pending,paid,cancelled',
+            'paymentType' => 'sometimes|string|in:reguler,membership',
             'total' => 'sometimes|numeric|min:0',
         ]);
 
@@ -226,24 +227,41 @@ class ReservationController extends Controller
             ], 422);
         }
 
+        if ($request->paymentType === 'membership' && $request->membershipId) {
+            $membership = Membership::find($request->membershipId);
+            // Ambil locationId & sportId dari lapangan yang dipesan
+            $fieldIds = collect($request->details)->pluck('fieldId')->unique();
+            $fields = Field::whereIn('fieldId', $fieldIds)->get(['fieldId', 'locationId', 'sportId']);
+
+            // Cek apakah semua lapangan sesuai dengan membership
+            foreach ($fields as $field) {
+                if ($field->locationId != $membership->locationId || $field->sportId != $membership->sportId) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Membership tidak berlaku untuk lokasi atau olahraga yang dipilih.',
+                        'invalidField' => $field,
+                    ], 422);
+                }
+            }
+        }
+
         $details = collect($request->details);
 
-        // Cek konflik
         $conflicts = [];
         foreach ($details as $detail) {
             foreach ($detail['timeIds'] as $timeId) {
-                $exists = ReservationDetail::join('times', 'reservation_details.timeId', '=', 'times.timeId')
-                    ->where('reservation_details.fieldId', $detail['fieldId'])
-                    ->where('reservation_details.timeId', $timeId)
-                    ->where('reservation_details.date', $detail['date'])
-                    ->where('times.status', 'booked')
-                    ->first();
+                // Cek apakah sudah ada reservasi dengan fieldId, timeId, dan date yang sama
+                $existingReservation = ReservationDetail::where('fieldId', $detail['fieldId'])
+                    ->where('timeId', $timeId)
+                    ->where('date', $detail['date'])
+                    ->exists();
 
-                if ($exists) {
+                if ($existingReservation) {
                     $conflicts[] = [
                         'fieldId' => $detail['fieldId'],
                         'timeId' => $timeId,
                         'date' => $detail['date'],
+                        'message' => 'Lapangan dan jam sudah dipesan pada tanggal tersebut.'
                     ];
                 }
             }
@@ -260,11 +278,17 @@ class ReservationController extends Controller
         // Buat reservasi utama
         $reservation = Reservation::create([
             'userId' => $request->userId,
+            'membershipId' => $request->paymentType === 'membership' ? $request->membershipId : null,
             'name' => $request->name ?? 'Reservasi ' . now(),
             'paymentStatus' => $request->paymentStatus ?? 'pending',
+            'paymentType' => $request->paymentType ?? 'reguler',
             'total' => $request->total ?? 0,
             'remaining' => 0,
         ]);
+
+        if ($request->paymentType === 'membership') {
+            $reservation->membership()->attach($request->membershipId);
+        }
 
         // Simpan semua detail
         foreach ($details as $detail) {
@@ -277,19 +301,10 @@ class ReservationController extends Controller
             }
         }
 
-        // Ubah status times yang sudah dipesan menjadi 'booked'
-        foreach ($details as $detail) {
-            foreach ($detail['timeIds'] as $timeId) {
-                $time = Time::find($timeId);
-                $time->status = 'booked';
-                $time->save();
-            }
-        }
-
         return response()->json([
             'success' => true,
             'message' => 'Reservasi berhasil dibuat',
-            'reservation' => $reservation->load('details.field', 'details.time')
+            'reservation' => $reservation->load('details.field', 'details.time', 'membership')
         ], 201);
     }
 
@@ -308,6 +323,7 @@ class ReservationController extends Controller
      *     "userId": 1,
      *     "name": "Weekend Match",
      *     "paymentStatus": "pending",
+     *     "paymentType": "reguler",
      *     "total": 200000,
      *     "remaining": 0,
      *     "created_at": "2025-05-12T10:00:00.000000Z",
@@ -357,6 +373,7 @@ class ReservationController extends Controller
      *
      * @urlParam id integer required The ID of the reservation. Example: 1
      * @bodyParam paymentStatus string required The new payment status (pending, paid, cancelled). Example: paid
+     * @bodyParam paymentType string optional The payment type (reguler, membership). Example: reguler
      *
      * @response {
      *   "success": true,
@@ -386,6 +403,7 @@ class ReservationController extends Controller
 
         $validator = Validator::make($request->all(), [
             'paymentStatus' => 'required|string|in:pending,complete,fail,dp',
+            'paymentType' => 'sometimes|string|in:reguler,membership',
         ]);
 
         if ($validator->fails()) {
@@ -397,6 +415,11 @@ class ReservationController extends Controller
         }
 
         $reservation->paymentStatus = $request->paymentStatus;
+
+        if ($request->has('paymentType')) {
+            $reservation->paymentType = $request->paymentType;
+        }
+
         $reservation->save();
 
         // Ubah status time menjadi 'available' jika dibatalkan
@@ -570,11 +593,6 @@ class ReservationController extends Controller
 
             $dates = collect();
             $current = strtotime($startDate);
-            $startDate = now()->format('Y-m-d');
-            $endDate = now()->addDays(7)->format('Y-m-d');
-
-            $dates = collect();
-            $current = strtotime($startDate);
             $end = strtotime($endDate);
 
             while ($current <= $end) {
@@ -584,7 +602,6 @@ class ReservationController extends Controller
 
             $sportName = $request->query('sportName');
 
-            // Ambil semua sportName yang tersedia di lokasi tersebut
             $availableSports = DB::table('fields')
                 ->join('sports', 'fields.sportId', '=', 'sports.sportId')
                 ->where('fields.locationId', $locationId)
@@ -592,7 +609,6 @@ class ReservationController extends Controller
                 ->distinct()
                 ->get();
 
-            // Jika sportName tidak diisi atau tidak ditemukan
             $matchedSport = $availableSports->first(function ($sport) use ($sportName) {
                 return strtolower($sport->sportName) === strtolower($sportName);
             });
@@ -602,17 +618,24 @@ class ReservationController extends Controller
                     'success' => true,
                     'locationId' => $locationId,
                     'available_sports' => $availableSports->pluck('sportName'),
-                    'fields' => [], // tidak ada jadwal
+                    'fields' => [],
                 ]);
             }
 
             $sportId = $matchedSport->sportId;
 
-            // Ambil semua field berdasarkan locationId dan sportId
+            // Get all fields for the location and sport
             $fields = DB::table('fields')
                 ->where('locationId', $locationId)
                 ->where('sportId', $sportId)
                 ->get();
+
+            // Preload all existing reservations for these fields and dates
+            $existingReservations = DB::table('reservation_details')
+                ->whereIn('fieldId', $fields->pluck('fieldId'))
+                ->whereIn('date', $dates)
+                ->get()
+                ->groupBy(['date', 'fieldId', 'timeId']);
 
             $scheduleData = [];
 
@@ -625,18 +648,15 @@ class ReservationController extends Controller
                 $dailySchedules = [];
 
                 foreach ($dates as $date) {
-                    $slots = $timeSlots->map(function ($slot) use ($field, $date) {
-                        $isReserved = DB::table('reservation_details')
-                            ->where('fieldId', $field->fieldId)
-                            ->where('timeId', $slot->timeId)
-                            ->where('date', $date)
-                            ->exists();
+                    $slots = $timeSlots->map(function ($slot) use ($field, $date, $existingReservations) {
+                        $isBooked = isset($existingReservations[$date][$field->fieldId][$slot->timeId]);
 
                         return [
                             'timeId' => $slot->timeId,
                             'time' => $slot->time,
                             'price' => 'Rp ' . number_format($slot->price, 0, ',', '.'),
-                            'status' => $isReserved ? 'booked' : 'available',
+                            'status' => $isBooked ? 'booked' : 'available',
+                            'isBooked' => $isBooked
                         ];
                     });
 
@@ -779,5 +799,40 @@ class ReservationController extends Controller
                 'error' => $e->getMessage(),
             ], 500);
         }
+    }
+
+    public function userReservations(Request $request)
+    {
+        $userId = $request->query('user_id');
+
+        if (!$userId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Parameter user_id wajib diisi.',
+                'data' => []
+            ], 400);
+        }
+
+        // Ambil semua reservasi dengan relasi user dan details
+        $reservations = Reservation::with(['details', 'user'])
+            ->where('userId', $userId)
+            ->get();
+
+        // Ambil 1 data user dari salah satu reservasi (karena user-nya pasti sama)
+        $user = $reservations->first()?->user;
+
+        // Hilangkan properti 'user' dari setiap item dalam data
+        $cleanedReservations = $reservations->map(function ($reservation) {
+            $res = $reservation->totoArray();
+            unset($res['user']);
+            return $res;
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => 'User reservations retrieved successfully',
+            'user' => $user,
+            'data' => $cleanedReservations
+        ]);
     }
 }

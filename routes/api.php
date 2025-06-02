@@ -18,6 +18,8 @@ use App\Http\Controllers\API\ScheduleController;
 use App\Http\Controllers\API\SportController;
 use App\Http\Controllers\API\UserController;
 use App\Http\Controllers\API\HistoryController;
+use App\Http\Controllers\API\SuperAdmin\DashboardController;
+use App\Http\Controllers\API\Admin\AdminDashboardController;
 
 /*
 |--------------------------------------------------------------------------
@@ -32,8 +34,21 @@ Auth::routes(['verify' => true]);
 Route::post('register', [AuthController::class, 'register']);
 Route::post('login', [AuthController::class, 'login']);
 Route::post('logout', [AuthController::class, 'logout']);
-Route::put('editAdminProfile/{id}', [AuthController::class, 'editAdminProfile']);
-Route::middleware('auth:api')->post('change-password', [AuthController::class, 'changePassword']);
+Route::middleware('auth:api')->group(function () {
+    Route::put('editAdminProfile/{id}', [AuthController::class, 'editAdminProfile']);
+    Route::post('change-password', [AuthController::class, 'changePassword']);
+});
+
+
+// Dashboard routes
+// routes/api.php
+Route::prefix('superadmin')->group(function () {
+    Route::get('/dashboard', [DashboardController::class, 'index']);
+});
+
+Route::prefix('admin')->group(function () {
+    Route::get('/dashboard/{locationId}', [AdminDashboardController::class, 'getDashboardAdmin']);
+});
 
 // Public routes
 // Sport API routes
@@ -81,7 +96,7 @@ Route::group(['prefix' => 'reservations'], function () {
     // Route::get('/minimumPrice', [ReservationController::class, 'getMinPricePerLocation']);
     Route::get('/{locationId}/minimumPrice', [ReservationController::class, 'getMinPriceByLocation']);
 
-    
+
     Route::get('/', [ReservationController::class, 'index']);
     Route::post('/', [ReservationController::class, 'store']);
     Route::get('/user', [ReservationController::class, 'userReservations']);
@@ -129,6 +144,7 @@ Route::group(['prefix' => 'users'], function () {
     Route::get('/', [UserController::class, 'index']);
     Route::get('/{id}', [UserController::class, 'show']);
     Route::put('/{id}', [UserController::class, 'update']);
+    Route::put('/{id}/change-password', [UserController::class, 'changePassword']);
     Route::delete('/{id}', [UserController::class, 'destroy']);
 });
 

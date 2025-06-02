@@ -3,10 +3,10 @@ name: Deploy Backend Laravel
 on:
   push:
     branches:
-      - deployment
+      - development
   pull_request:
     branches:
-      - deployment
+      - development
 
 jobs:
   deploy-backend:

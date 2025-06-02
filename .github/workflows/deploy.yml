@@ -25,11 +25,18 @@ jobs:
           port: 22
           script: |
             echo "🚀 Masuk ke VM Backend"
-            cd /home/genzett/resports-compose
+            cd /home/genzett/resports-compose/backend/Backend-GenZett
+          
+            echo "🔍 Cek branch saat ini"
+            git branch
+          
             echo "📦 Menarik update dari Git"
-            cd backend/Backend-GenZett
+            git stash
+            git checkout development
             git pull origin development
+          
             echo "🐳 Restart Docker Compose"
             cd ../../
             docker compose down --remove-orphans
             docker compose up -d --build
+

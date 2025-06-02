@@ -91,10 +91,7 @@ class FieldController extends Controller
      */
     public function show($id)
     {
-        $field = Field::with(['location', 'sport', 'times'])
-            ->find($id);
-
-        $times = $field->times->where('fieldId', $field->fieldId);
+        $field = Field::with(['location', 'sport', 'times'])->find($id);
 
         if (!$field) {
             return response()->json([
@@ -103,6 +100,7 @@ class FieldController extends Controller
             ], 404);
         }
 
+        $times = $field->times->where('fieldId', $field->fieldId);
         $formattedField = [
             'id' => $field->fieldId,
             'name' => $field->name,
@@ -268,58 +266,69 @@ class FieldController extends Controller
      * @return \Illuminate\Http\JsonResponse
      */
     public function store(Request $request)
-{
-    $validated = $request->validate([
-        'locationId' => 'required|integer',
-        'sportId' => 'required|integer',
-        'name' => 'required|string',
-        'startHour' => 'required|date_format:H:i',
-        'endHour' => 'required|date_format:H:i|after:startHour',
-        'description' => 'required|string',
-        'start' => 'required|array',
-        'start.*' => 'required|date_format:H:i',
-        'end' => 'required|array',
-        'end.*' => 'required|date_format:H:i',
-        'price' => 'required|array',
-        'price.*' => 'required|numeric|min:0',
-    ]);
+    {
+        $validated = $request->validate([
+            'locationId' => 'required|integer',
+            'sportId' => 'required|integer',
+            'name' => 'required|string',
+            'startHour' => 'required|date_format:H:i',
+            'endHour' => 'required|date_format:H:i|after:startHour',
+            'description' => 'required|string',
+            'start' => 'required|array',
+            'start.*' => 'required|date_format:H:i',
+            'end' => 'required|array',
+            'end.*' => 'required|date_format:H:i',
+            'price' => 'required|array',
+            'price.*' => 'required|numeric|min:0',
+        ]);
 
-    $field = Field::create([
-        'locationId' => $validated['locationId'],
-        'sportId' => $validated['sportId'],
-        'name' => $validated['name'],
-        'startHour' => $validated['startHour'],
-        'endHour' => $validated['endHour'],
-        'description' => $validated['description'],
-    ]);
+        $field = Field::create([
+            'locationId' => $validated['locationId'],
+            'sportId' => $validated['sportId'],
+            'name' => $validated['name'],
+            'startHour' => $validated['startHour'],
+            'endHour' => $validated['endHour'],
+            'description' => $validated['description'],
+        ]);
 
-    foreach ($validated['start'] as $index => $startTime) {
-        $start = Carbon::createFromFormat('H:i', $startTime);
-        $end = Carbon::createFromFormat('H:i', $validated['end'][$index]);
-        $slotPrice = $validated['price'][$index];
+        foreach ($validated['start'] as $index => $startTime) {
+            $start = Carbon::createFromFormat('H:i', $startTime);
+            $end = Carbon::createFromFormat('H:i', $validated['end'][$index]);
+            $slotPrice = $validated['price'][$index];
 
-        while ($start < $end) {
-            Time::create([
-                'fieldId' => $field->fieldId,
-                'time'    => $start->format('H:i'),
-                'status'  => 'available',
-                'price'   => $slotPrice,
-            ]);
+            while ($start < $end) {
+                Time::create([
+                    'fieldId' => $field->fieldId,
+                    'time'    => $start->format('H:i'),
+                    'status'  => 'available',
+                    'price'   => $slotPrice,
+                ]);
 
-            $start->addHour();
+                $start->addHour();
+            }
         }
+
+        return response()->json([
+            'success' => true,
+            'time' => now()->toISOString(),
+        ]);
     }
-
-    return response()->json([
-        'success' => true,
-        'time' => now()->toISOString(),
-    ]);
-}
-
 
     // Untuk olahraga
     public function getAllSports() {
         $sports = Sport::select('sportId as id', 'sportName as name')->get();
         return response()->json($sports);
+    }
+
+    public function getAllFields(Request $request) {
+        $locationId = $request->input('locationId');
+        $query = Field::select('fieldId as id', 'name');
+        
+        if ($locationId) {
+            $query->where('locationId', $locationId);
+        }
+        $fields = $query->get();
+        
+        return response()->json($fields);
     }
 }

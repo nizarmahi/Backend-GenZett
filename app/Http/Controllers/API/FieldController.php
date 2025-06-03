@@ -5,6 +5,7 @@ namespace App\Http\Controllers\API;
 use App\Http\Controllers\Controller;
 use App\Models\Field;
 use App\Models\Location;
+use App\Models\ReservationDetail;
 use App\Models\Sport;
 use App\Models\Time;
 use Carbon\Carbon;
@@ -330,5 +331,61 @@ class FieldController extends Controller
         $fields = $query->get();
         
         return response()->json($fields);
+    }
+    
+    public function getAvailableTimes(Request $request, $fieldId)
+    {
+        $validator = Validator::make(array_merge($request->all(), ['fieldId' => (int)$fieldId]), [
+            'fieldId' => 'required|exists:fields,fieldId',
+            'date' => 'required|date',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Data yang diberikan tidak valid.',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        $date = $request->get('date');
+        
+        // Ambil semua waktu yang terkait dengan field (melalui relasi atau query)
+        // Asumsi: ada relasi field -> location -> times atau field langsung ke times
+        $allTimes = Time::select('timeId', 'time', 'status')
+            ->where('status', '!=', 'non-available') // Exclude deleted times
+            ->where('fieldId', (int)$fieldId)
+            ->orderBy('time')
+            ->get();
+
+        $result = [];
+        
+        foreach ($allTimes as $time) {
+            // Cek apakah waktu ini sudah dipesan untuk field dan tanggal tersebut
+            $isBooked = ReservationDetail::where('fieldId', (int)$fieldId)
+                ->where('timeId', $time->timeId)
+                ->where('date', $date)
+                ->exists();
+                
+            $status = 'available';
+            if ($isBooked) {
+                $status = 'booked';
+            } elseif ($time->status !== 'available') {
+                $status = 'unavailable';
+            }
+            
+            $result[] = [
+                'timeId' => $time->timeId,
+                'time' => $time->time,
+                'status' => $status
+            ];
+        }
+
+        return response()->json([
+            'success' => true,
+            'times' => $result,
+            'fieldId' => (int)$fieldId,
+            'date' => $date
+        ]);
     }
 }

@@ -1,41 +1,26 @@
-name: Deploy Backend Laravel
+script: |
+  echo "🚀 Masuk ke VM Backend"
+  cd /home/genzett/resports-compose/backend/Backend-GenZett || exit 1
 
-on:
-  push:
-    branches:
-      - development
-  pull_request:
-    branches:
-      - development
+  echo "🔍 Branch saat ini"
+  git branch
 
-jobs:
-  deploy-backend:
-    runs-on: ubuntu-latest
+  echo "🔍 Status sebelum update"
+  git status
 
-    steps:
-      - name: Checkout Kode Backend
-        uses: actions/checkout@v3
+  echo "📦 Simpan perubahan lokal jika ada"
+  git stash || echo "No local changes"
 
-      - name: Deploy ke VM Backend via SSH
-        uses: appleboy/ssh-action@v0.1.10
-        with:
-          host: ${{ secrets.BACKEND_SSH_HOST }}
-          username: ${{ secrets.BACKEND_SSH_USER }}
-          key: ${{ secrets.BACKEND_SSH_KEY }}
-          port: 22
-          script: |
-            echo "🚀 Masuk ke VM Backend"
-            cd /home/genzett/resports-compose/backend/Backend-GenZett
-          
-            echo "🔍 Cek branch saat ini"
-            git branch
-          
-            echo "📦 Menarik update dari Git"
-            git stash
-            git checkout development
-            git pull origin development
-          
-            echo "🐳 Restart Docker Compose"
-            cd ../../
-            docker compose down --remove-orphans
-            docker compose up -d --build
+  echo "🔄 Checkout branch development"
+  git checkout development || exit 1
+
+  echo "⬇️ Pull update terbaru"
+  git pull origin development
+
+  echo "🔍 Status setelah update"
+  git status
+
+  echo "🐳 Restart Docker Compose"
+  cd ../../
+  docker compose down --remove-orphans
+  docker compose up -d --build

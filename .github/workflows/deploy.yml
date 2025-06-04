@@ -26,17 +26,16 @@ jobs:
           script: |
             echo "🚀 Masuk ke VM Backend"
             cd /home/genzett/resports-compose/backend/Backend-GenZett
-          
-            echo "🔍 Cek branch saat ini"
-            git branch
-          
-            echo "📦 Menarik update dari Git"
-            git stash
+
+            echo "⚠️ Reset semua perubahan lokal"
+            git reset --hard
+            git clean -fd
+
+            echo "🔍 Checkout dan tarik branch development"
             git checkout development
             git pull origin development
-          
+
             echo "🐳 Restart Docker Compose"
             cd ../../
             docker compose down --remove-orphans
             docker compose up -d --build
-

@@ -1,48 +1,41 @@
-name: Deploy Backend Laravel to VM
+name: Deploy Backend Laravel
 
 on:
   push:
     branches:
       - development
+  pull_request:
+    branches:
+      - development
 
 jobs:
-  deploy:
+  deploy-backend:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout Kode Backend
         uses: actions/checkout@v3
 
-      - name: Clean old backend source files only in VM (keep vendor and .env)
-        uses: appleboy/ssh-action@v1.0.3
+      - name: Deploy ke VM Backend via SSH
+        uses: appleboy/ssh-action@v0.1.10
         with:
           host: ${{ secrets.BACKEND_SSH_HOST }}
           username: ${{ secrets.BACKEND_SSH_USER }}
           key: ${{ secrets.BACKEND_SSH_KEY }}
+          port: 22
           script: |
-            cd ~/resports-compose/backend/Backend-GenZett || exit 1
-            # Hapus folder dan file source code kecuali vendor dan .env
-            rm -rf app bootstrap config database public resources routes tests
-            rm artisan composer.json composer.lock package.json webpack.mix.js || true
-
-      - name: Upload backend source code to VM via SCP (exclude vendor and .env)
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.BACKEND_SSH_HOST }}
-          username: ${{ secrets.BACKEND_SSH_USER }}
-          key: ${{ secrets.BACKEND_SSH_KEY }}
-          source: |
-            app bootstrap config database public resources routes tests artisan composer.json composer.lock package.json webpack.mix.js
-          target: "~/resports-compose/backend/Backend-GenZett"
-          strip_components: 0
-
-      - name: SSH and redeploy Docker Compose
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.BACKEND_SSH_HOST }}
-          username: ${{ secrets.BACKEND_SSH_USER }}
-          key: ${{ secrets.BACKEND_SSH_KEY }}
-          script: |
-            cd ~/resports-compose
+            echo "🚀 Masuk ke VM Backend"
+            cd /home/genzett/resports-compose/backend/Backend-GenZett
+          
+            echo "🔍 Cek branch saat ini"
+            git branch
+          
+            echo "📦 Menarik update dari Git"
+            git stash
+            git checkout development
+            git pull origin development
+          
+            echo "🐳 Restart Docker Compose"
+            cd ../../
             docker compose down --remove-orphans
             docker compose up -d --build

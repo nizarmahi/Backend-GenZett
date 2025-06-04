@@ -17,6 +17,7 @@ class ScheduleController extends Controller
      * @param Request $request
      * @return \Illuminate\Http\JsonResponse
      */
+
     public function index(Request $request)
     {
         $date = $request->input('date');
@@ -36,7 +37,8 @@ class ScheduleController extends Controller
                 'reservation_details.date',
                 'times.time as fieldTime',
                 'fields.name as fieldName',
-                'sports.sportName as sport',
+                'sports.sportId as sport',
+                'sports.sportName',
                 'reservations.paymentStatus'
             ])
             ->whereIn('reservations.paymentStatus', ['pending', 'complete', 'dp', 'closed']);
@@ -55,45 +57,80 @@ class ScheduleController extends Controller
 
         $schedules = $query->get();
 
-        // Ambil semua field
-        $fieldsRaw = DB::table('fields')
+        $fieldsQuery = DB::table('fields')
             ->leftJoin('locations', 'fields.locationId', '=', 'locations.locationId')
             ->leftJoin('sports', 'fields.sportId', '=', 'sports.sportId')
             ->select([
                 'fields.fieldId',
                 'fields.name',
+                'fields.sportId',
+                'sports.sportName',
+                'locations.locationId'
             ])
-            ->when(!empty($sportId) && $sportId !== 'all', function ($q) use ($sportId) {
-                $q->where('fields.sportId', $sportId);
-            })
-            ->when(!empty($locationId) && $locationId !== 'all', function ($q) use ($locationId) {
-                $q->where('fields.locationId', $locationId);
-            })
-            ->where('fields.deleted_at', null)
-            ->get();
+            ->where('fields.deleted_at', null);
 
+        if (!empty($sportId) && $sportId !== 'all') {
+            $fieldsQuery->where('fields.sportId', $sportId);
+        }
+
+        if (!empty($locationId) && $locationId !== 'all') {
+            $fieldsQuery->where('fields.locationId', $locationId);
+        }
+
+        $fieldsRaw = $fieldsQuery->get();
         $fieldIds = $fieldsRaw->pluck('fieldId')->toArray();
 
-        // Ambil time berdasarkan field
+        // Ambil time berdasarkan field dengan status available
         $times = DB::table('times')
             ->whereIn('fieldId', $fieldIds)
             ->where('status', 'available')
             ->select('fieldId', 'time')
+            ->orderBy('time')
             ->get()
             ->groupBy('fieldId');
 
-        // Gabungkan times ke fields
+        // Gabungkan times ke fields dan filter hanya field yang memiliki waktu tersedia
         $fields = $fieldsRaw->map(function ($field) use ($times) {
+            $fieldTimes = $times->get($field->fieldId, collect())->pluck('time')->toArray();
+            
             return [
                 'fieldId' => $field->fieldId,
                 'name' => $field->name,
-                'times' => $times[$field->fieldId]->pluck('time')->toArray() ?? []
+                'sportId' => $field->sportId,
+                'sportName' => $field->sportName,
+                'locationId' => $field->locationId,
+                'times' => $fieldTimes
             ];
-        });
+        })->filter(function ($field) {
+            return !empty($field['times']);
+        })->values();
+
+        if ($fields->isEmpty()) {
+            return response()->json([
+                'schedules' => [],
+                'fields' => [],
+                'message' => 'Tidak ada lapangan tersedia untuk filter yang dipilih'
+            ]);
+        }
+
+        // Add metadata for debugging
+        $metadata = [
+            'filters_applied' => [
+                'date' => $date,
+                'sport_id' => $sportId,
+                'location_id' => $locationId
+            ],
+            'total_schedules' => $schedules->count(),
+            'total_fields' => $fields->count(),
+            'available_times_count' => $fields->sum(function($field) {
+                return count($field['times']);
+            })
+        ];
 
         return response()->json([
             'schedules' => $schedules,
-            'fields' => $fields
+            'fields' => $fields,
+            'metadata' => $metadata
         ]);
     }
 }

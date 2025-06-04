@@ -65,13 +65,20 @@ Route::group(['prefix' => 'sports'], function () {
 Route::group(['prefix' => 'locations'], function () {
     Route::get('/', [LocationController::class, 'index']);
     Route::post('/', [LocationController::class, 'store']);
-    Route::get('/allSports', [LocationController::class, 'getAllSports']);///gaperklu(ehh temp)
+    Route::get('/allSports', [LocationController::class, 'getAllSports']);///
     Route::get('/allLocations', [LocationController::class, 'getAllLocations']);
     Route::get('/{id}', [LocationController::class, 'show']);
 
-    Route::get('/{id}/sports', [LocationController::class, 'getLocationSports']);///gaperlu
+    Route::get('/{id}/sports', [LocationController::class, 'getLocationSports']);///
     Route::put('/{id}', [LocationController::class, 'update']);
     Route::delete('/{id}', [LocationController::class, 'delete']);
+});
+Route::prefix('closed')->group(function () {
+    Route::get('/', [ClosedController::class, 'index']);
+    Route::post('/', [ClosedController::class, 'store']);
+    Route::get('/{id}', [ClosedController::class, 'show']);
+    Route::put('/{id}', [ClosedController::class, 'update']);
+    Route::delete('/{id}', [ClosedController::class, 'destroy']);
 });
 
 // Field API routes
@@ -82,12 +89,8 @@ Route::group(['prefix' => 'fields'], function () {
     Route::get('/{id}', [FieldController::class, 'show']);
     Route::put('/{id}', [FieldController::class, 'update']);
     Route::delete('/{id}', [FieldController::class, 'delete']);
+    Route::get('/availableTimes/{fieldId}', [FieldController::class, 'getAvailableTimes']);
 });
-Route::group(['prefix' => 'closed'], function () {
-    Route::get('/', [ClosedController::class, 'index']);
-    Route::post('/', [ClosedController::class, 'store']);
-});
-// Reservation API routes
 Route::group(['prefix' => 'reservations'], function () {
     Route::get('/location', [ReservationController::class, 'getAllLocations']);
     Route::get('/sport', [ReservationController::class, 'getSports']);

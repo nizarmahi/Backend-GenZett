@@ -43,6 +43,7 @@ class ReservationController extends Controller
             'details.time',
             'user'
         ])
+            ->where('paymentStatus', '!=', 'closed')
             ->when($locationId, function ($query) use ($locationId) {
                 $query->whereHas('details.field.location', function ($q) use ($locationId) {
                     $q->where('locationId', $locationId);

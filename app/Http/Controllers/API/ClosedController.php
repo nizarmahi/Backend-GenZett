@@ -6,9 +6,6 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Reservation;
 use App\Models\ReservationDetail;
-use App\Models\Field;
-use App\Models\Payment;
-use App\Models\Time;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
 
@@ -56,27 +53,59 @@ class ClosedController extends Controller
                 'message' => 'Semua reservasi berhasil diambil',
                 'data' => $reservations->map(function ($reservation) {
                     return [
-                        // 'reservationId' => $reservation->reservationId,
-                        // 'userId' => $reservation->userId,
+                        'reservationId' => $reservation->reservationId,
                         'name' => $reservation->name,
                         'paymentStatus' => $reservation->paymentStatus,
-                        // 'total' => $reservation->total,
                         'created_at' => $reservation->created_at,
-                        // 'status' => 'upcoming',
-                        // 'updated_at' => $reservation->updated_at,
                         'details' => $reservation->details->map(function ($detail) {
                             return [
-                                // 'detailId' => $detail->detailId,
-                                // 'reservationId' => $detail->reservationId,
                                 'fieldName' => $detail->field->name,
                                 'time' => $detail->time->time,
                                 'date' => $detail->date,
-                                // 'status' => $detail->status,
                             ];
                         })
                     ];
                 })
             ]);
+    }
+
+    public function show($id)
+    {
+        try {
+            $reservation = Reservation::with(['details.field', 'details.time', 'user'])
+                ->where('paymentStatus', 'closed')
+                ->find($id);
+
+            if (!$reservation) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Closed field tidak ditemukan'
+                ], 404);
+            }
+
+            // Format data untuk edit
+            $formattedData = [
+                'id' => $reservation->reservationId,
+                'name' => $reservation->name,
+                'fieldId' => $reservation->details->first()->fieldId ?? null,
+                'date' => $reservation->details->first()->date ?? null,
+                'time' => $reservation->details->pluck('time.time')->toArray(),
+                'userId' => $reservation->userId,
+            ];
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Data berhasil diambil',
+                'data' => $formattedData,
+                'reservation' => $reservation
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengambil data closed field'
+            ], 500);
+        }
     }
 
     public function store(Request $request)
@@ -87,7 +116,7 @@ class ClosedController extends Controller
             'fieldId' => 'required|exists:fields,fieldId',
             'date' => 'required|date',
             'time' => 'required|array|min:1',
-            'time.*' => 'required|string', // Format waktu seperti "08:00:00"
+            'time.*' => 'required|string',
         ]);
 
         if ($validator->fails()) {
@@ -103,10 +132,9 @@ class ClosedController extends Controller
         $skippedTimes = [];
         
         foreach ($request->time as $timeString) {
-            // PERBAIKAN: Cari timeId berdasarkan time string DAN fieldId
             $timeRecord = DB::table('times')
                 ->where('time', $timeString)
-                ->where('fieldId', $request->fieldId) // TAMBAHKAN FILTER FIELD
+                ->where('fieldId', $request->fieldId)
                 ->where('status', 'available')
                 ->first();
                 
@@ -117,7 +145,6 @@ class ClosedController extends Controller
             }
         }
 
-        // Jika tidak ada waktu yang available
         if (empty($availableTimeIds)) {
             return response()->json([
                 'success' => false,
@@ -131,14 +158,13 @@ class ClosedController extends Controller
         foreach ($availableTimeIds as $timeId) {
             $existingReservation = ReservationDetail::where('fieldId', $request->fieldId)
                 ->where('timeId', $timeId)
-                ->whereDate('date', $request->date) // Gunakan whereDate untuk handle datetime
+                ->whereDate('date', $request->date)
                 ->exists();
 
             if ($existingReservation) {
-                // Ambil time string untuk konflik dari field yang sama
                 $timeRecord = DB::table('times')
                     ->where('timeId', $timeId)
-                    ->where('fieldId', $request->fieldId) // Pastikan dari field yang sama
+                    ->where('fieldId', $request->fieldId)
                     ->first();
                     
                 $conflicts[] = [
@@ -151,7 +177,6 @@ class ClosedController extends Controller
             }
         }
 
-        // Filter timeIds yang tidak conflict
         $conflictTimeIds = collect($conflicts)->pluck('timeId')->toArray();
         $validTimeIds = array_diff($availableTimeIds, $conflictTimeIds);
 
@@ -164,17 +189,17 @@ class ClosedController extends Controller
             ], 409);
         }
 
-        // Buat reservasi utama dengan data statis
+        // Buat reservasi utama
         $reservation = Reservation::create([
             'userId' => $request->userId,
             'name' => $request->name,
-            'paymentStatus' => 'closed', // Statis
-            'paymentType' => 'reguler', // Statis
-            'total' => 0, // Statis, bisa dihitung berdasarkan jumlah waktu yang berhasil
-            'remaining' => 0, // Statis
+            'paymentStatus' => 'closed',
+            'paymentType' => 'reguler',
+            'total' => 0,
+            'remaining' => 0,
         ]);
 
-        // Simpan detail reservasi untuk waktu yang valid
+        // Simpan detail reservasi
         foreach ($validTimeIds as $timeId) {
             $reservation->details()->create([
                 'fieldId' => $request->fieldId,
@@ -183,11 +208,9 @@ class ClosedController extends Controller
             ]);
         }
 
-        // Siapkan response dengan informasi tambahan
-        // PERBAIKAN: Ambil waktu yang booked dari field yang spesifik
         $bookedTimes = DB::table('times')
             ->whereIn('timeId', $validTimeIds)
-            ->where('fieldId', $request->fieldId) // Pastikan dari field yang sama
+            ->where('fieldId', $request->fieldId)
             ->pluck('time')
             ->toArray();
 
@@ -198,18 +221,192 @@ class ClosedController extends Controller
             'booked_times' => $bookedTimes,
         ];
 
-        // Tambahkan informasi waktu yang diskip jika ada
         if (!empty($skippedTimes)) {
             $response['skipped_times'] = $skippedTimes;
             $response['skipped_message'] = 'Beberapa waktu tidak tersedia atau tidak ada untuk field ini';
         }
 
-        // Tambahkan informasi konflik jika ada
         if (!empty($conflicts)) {
             $response['conflicts'] = $conflicts;
             $response['conflict_message'] = 'Beberapa waktu sudah dipesan dan diskip';
         }
 
         return response()->json($response, 201);
+    }
+
+    public function update(Request $request, $id)
+    {
+        try {
+            $reservation = Reservation::with('details')
+                ->where('paymentStatus', 'closed')
+                ->find($id);
+
+            if (!$reservation) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Closed field tidak ditemukan'
+                ], 404);
+            }
+
+            $validator = Validator::make($request->all(), [
+                'userId' => 'sometimes|exists:users,userId',
+                'name' => 'required|string|max:255',
+                'fieldId' => 'required|exists:fields,fieldId',
+                'date' => 'required|date',
+                'time' => 'required|array|min:1',
+                'time.*' => 'required|string',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Data yang diberikan tidak valid.',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            // Hapus detail reservasi lama
+            $reservation->details()->delete();
+
+            // Konversi time string ke timeId
+            $availableTimeIds = [];
+            $skippedTimes = [];
+            
+            foreach ($request->time as $timeString) {
+                $timeRecord = DB::table('times')
+                    ->where('time', $timeString)
+                    ->where('fieldId', $request->fieldId)
+                    ->where('status', 'available')
+                    ->first();
+                    
+                if ($timeRecord) {
+                    $availableTimeIds[] = $timeRecord->timeId;
+                } else {
+                    $skippedTimes[] = $timeString;
+                }
+            }
+
+            if (empty($availableTimeIds)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Tidak ada waktu yang tersedia untuk reservasi pada field ini.',
+                    'skipped_times' => $skippedTimes
+                ], 422);
+            }
+
+            // Cek konflik reservasi (exclude current reservation)
+            $conflicts = [];
+            foreach ($availableTimeIds as $timeId) {
+                $existingReservation = ReservationDetail::where('fieldId', $request->fieldId)
+                    ->where('timeId', $timeId)
+                    ->whereDate('date', $request->date)
+                    ->whereHas('reservation', function($q) use ($id) {
+                        $q->where('reservationId', '!=', $id);
+                    })
+                    ->exists();
+
+                if ($existingReservation) {
+                    $timeRecord = DB::table('times')
+                        ->where('timeId', $timeId)
+                        ->where('fieldId', $request->fieldId)
+                        ->first();
+                        
+                    $conflicts[] = [
+                        'fieldId' => $request->fieldId,
+                        'timeId' => $timeId,
+                        'time' => $timeRecord->time ?? 'Unknown',
+                        'date' => $request->date,
+                        'message' => 'Lapangan dan jam sudah dipesan pada tanggal tersebut.'
+                    ];
+                }
+            }
+
+            $conflictTimeIds = collect($conflicts)->pluck('timeId')->toArray();
+            $validTimeIds = array_diff($availableTimeIds, $conflictTimeIds);
+
+            if (empty($validTimeIds)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Semua waktu yang tersedia sudah dipesan',
+                    'conflicts' => $conflicts,
+                    'skipped_times' => $skippedTimes
+                ], 409);
+            }
+
+            // Update reservasi utama
+            $reservation->update([
+                'userId' => $request->userId ?? $reservation->userId,
+                'name' => $request->name,
+            ]);
+
+            // Buat detail reservasi baru
+            foreach ($validTimeIds as $timeId) {
+                $reservation->details()->create([
+                    'fieldId' => $request->fieldId,
+                    'timeId' => $timeId,
+                    'date' => $request->date,
+                ]);
+            }
+
+            $bookedTimes = DB::table('times')
+                ->whereIn('timeId', $validTimeIds)
+                ->where('fieldId', $request->fieldId)
+                ->pluck('time')
+                ->toArray();
+
+            $response = [
+                'success' => true,
+                'message' => 'Reservasi berhasil diperbarui',
+                'reservation' => $reservation->load('details.field', 'details.time'),
+                'booked_times' => $bookedTimes,
+            ];
+
+            if (!empty($skippedTimes)) {
+                $response['skipped_times'] = $skippedTimes;
+                $response['skipped_message'] = 'Beberapa waktu tidak tersedia atau tidak ada untuk field ini';
+            }
+
+            if (!empty($conflicts)) {
+                $response['conflicts'] = $conflicts;
+                $response['conflict_message'] = 'Beberapa waktu sudah dipesan dan diskip';
+            }
+
+            return response()->json($response);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengupdate closed field'
+            ], 500);
+        }
+    }
+
+    public function destroy($id)
+    {
+        try {
+            $reservation = Reservation::where('paymentStatus', 'closed')->find($id);
+
+            if (!$reservation) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Closed field tidak ditemukan'
+                ], 404);
+            }
+
+            // Hapus data detail reservasi dan reservasi sebelumnya terlebih dahulu
+            $reservation->details()->delete();
+            $reservation->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Closed field berhasil dihapus'
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menghapus closed field'
+            ], 500);
+        }
     }
 }

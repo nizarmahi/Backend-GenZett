@@ -13,25 +13,36 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Clean old backend folder in VM
+      - name: Clean old backend source files only in VM (keep vendor and .env)
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.BACKEND_SSH_HOST }}
           username: ${{ secrets.BACKEND_SSH_USER }}
           key: ${{ secrets.BACKEND_SSH_KEY }}
           script: |
-            rm -rf ~/resports-compose/backend/Backend-GenZett
-      
-      - name: List backend folder contents
-        run: ls -l ./backend/Backend-GenZett || echo "Folder tidak ditemukan"
+            cd ~/resports-compose/backend/Backend-GenZett || exit 1
+            rm -rf app bootstrap config database public resources routes tests artisan composer.* package.json webpack.mix.js
 
-      - name: Upload backend source code to VM via SCP
+      - name: Upload backend source code to VM via SCP (exclude vendor and .env)
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.BACKEND_SSH_HOST }}
           username: ${{ secrets.BACKEND_SSH_USER }}
           key: ${{ secrets.BACKEND_SSH_KEY }}
-          source: "."
+          source: |
+            app
+            bootstrap
+            config
+            database
+            public
+            resources
+            routes
+            tests
+            artisan
+            composer.json
+            composer.lock
+            package.json
+            webpack.mix.js
           target: "~/resports-compose/backend/Backend-GenZett"
           strip_components: 0
 

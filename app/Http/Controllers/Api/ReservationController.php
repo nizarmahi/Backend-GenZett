@@ -842,7 +842,7 @@ class ReservationController extends Controller
 
         // Hilangkan properti 'user' dari setiap item dalam data
         $cleanedReservations = $reservations->map(function ($reservation) {
-            $res = $reservation->totoArray();
+            $res = $reservation->toArray();
             unset($res['user']);
             return $res;
         });

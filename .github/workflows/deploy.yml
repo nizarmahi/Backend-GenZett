@@ -27,13 +27,13 @@ jobs:
             echo "🚀 Masuk ke VM Backend"
             cd /home/genzett/resports-compose/backend/Backend-GenZett
 
-            echo "⚠️ Reset semua perubahan lokal"
-            git reset --hard
-            git clean -fd
-
-            echo "🔍 Checkout dan tarik branch development"
             git checkout development
-            git pull origin development
+
+            echo "⚠️ Reset semua perubahan lokal dan bersihkan file yang tidak dilacak"
+            git fetch origin development
+            git reset --hard origin/development
+            # Bersihkan file/folder yang tidak dilacak dan diabaikan Git
+            git clean -fd
 
             echo "🐳 Restart Docker Compose"
             cd ../../

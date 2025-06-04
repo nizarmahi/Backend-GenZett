@@ -27,7 +27,6 @@ use App\Http\Controllers\API\Admin\AdminDashboardController;
 |--------------------------------------------------------------------------
 */
 
-// Ini tes deployment
 // Auth Routes
 Auth::routes(['verify' => true]);
 // Register routes

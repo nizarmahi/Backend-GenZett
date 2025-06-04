@@ -590,7 +590,7 @@ class ReservationController extends Controller
     {
         try {
             $startDate = now()->format('Y-m-d');
-            $endDate = now()->addDays(7)->format('Y-m-d');
+            $endDate = now()->addDays(6)->format('Y-m-d');
 
             $dates = collect();
             $current = strtotime($startDate);
@@ -624,14 +624,10 @@ class ReservationController extends Controller
             }
 
             $sportId = $matchedSport->sportId;
-
-            // Get all fields for the location and sport
             $fields = DB::table('fields')
                 ->where('locationId', $locationId)
                 ->where('sportId', $sportId)
                 ->get();
-
-            // Preload all existing reservations for these fields and dates
             $existingReservations = DB::table('reservation_details')
                 ->whereIn('fieldId', $fields->pluck('fieldId'))
                 ->whereIn('date', $dates)
@@ -639,31 +635,54 @@ class ReservationController extends Controller
                 ->groupBy(['date', 'fieldId', 'timeId']);
 
             $scheduleData = [];
+            $currentTime = now('Asia/Jakarta');
+            $currentHour = $currentTime->format('H:i:s');
 
             foreach ($fields as $field) {
                 $timeSlots = DB::table('times')
                     ->where('fieldId', $field->fieldId)
+                    ->where('status', 'available')
                     ->orderBy('time')
                     ->get();
 
                 $dailySchedules = [];
 
                 foreach ($dates as $date) {
-                    $slots = $timeSlots->map(function ($slot) use ($field, $date, $existingReservations) {
-                        $isBooked = isset($existingReservations[$date][$field->fieldId][$slot->timeId]);
+                    $isToday = ($date == $startDate);
+
+                    $filteredSlots = $timeSlots->filter(function ($slot) use ($isToday, $currentHour) {
+                        if (!$isToday) {
+                            return true;
+                        }
+                        return $slot->time > $currentHour;
+                    });
+
+                    $slots = $filteredSlots->map(function ($slot) use ($field, $date, $existingReservations) {
+
+                        $isBooked = false;
+
+                        if (
+                            isset($existingReservations[$date]) &&
+                            isset($existingReservations[$date][$field->fieldId]) &&
+                            isset($existingReservations[$date][$field->fieldId][$slot->timeId])
+                        ) {
+
+                            $reservationData = $existingReservations[$date][$field->fieldId][$slot->timeId];
+                            $isBooked = $reservationData->isNotEmpty();
+                        }
 
                         return [
                             'timeId' => $slot->timeId,
                             'time' => $slot->time,
                             'price' => 'Rp ' . number_format($slot->price, 0, ',', '.'),
-                            'status' => $isBooked ? 'booked' : 'available',
-                            'isBooked' => $isBooked
+                            'status' => $slot->status,
+                            'isBooked' => $isBooked,
                         ];
                     });
 
                     $dailySchedules[] = [
                         'date' => $date,
-                        'schedules' => $slots,
+                        'schedules' => $slots->values(),
                     ];
                 }
 
@@ -824,7 +843,7 @@ class ReservationController extends Controller
 
         // Hilangkan properti 'user' dari setiap item dalam data
         $cleanedReservations = $reservations->map(function ($reservation) {
-            $res = $reservation->totoArray();
+            $res = $reservation->toArray();
             unset($res['user']);
             return $res;
         });

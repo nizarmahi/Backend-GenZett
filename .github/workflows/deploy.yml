@@ -21,7 +21,9 @@ jobs:
           key: ${{ secrets.BACKEND_SSH_KEY }}
           script: |
             cd ~/resports-compose/backend/Backend-GenZett || exit 1
-            rm -rf app bootstrap config database public resources routes tests artisan composer.* package.json webpack.mix.js
+            # Hapus folder dan file source code kecuali vendor dan .env
+            rm -rf app bootstrap config database public resources routes tests
+            rm artisan composer.json composer.lock package.json webpack.mix.js || true
 
       - name: Upload backend source code to VM via SCP (exclude vendor and .env)
         uses: appleboy/scp-action@v0.1.7
@@ -30,20 +32,7 @@ jobs:
           username: ${{ secrets.BACKEND_SSH_USER }}
           key: ${{ secrets.BACKEND_SSH_KEY }}
           source: |
-            app
-            bootstrap
-            config
-            database
-            public
-            resources
-            routes
-            tests
-            artisan
-            composer.json
-            composer.lock
-            package.json
-            webpack.mix.js
-          source: "."
+            app bootstrap config database public resources routes tests artisan composer.json composer.lock package.json webpack.mix.js
           target: "~/resports-compose/backend/Backend-GenZett"
           strip_components: 0
 

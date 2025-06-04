@@ -4,7 +4,6 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use App\Models\Field;
-use App\Models\Location;
 use App\Models\ReservationDetail;
 use App\Models\Sport;
 use App\Models\Time;
@@ -220,15 +219,6 @@ class FieldController extends Controller
     {
         $field = Field::find($id);
 
-        // $admin = auth()->user()->admin;
-
-        // if (!$admin || $field->locationId !== $admin->location_id) {
-        //     return response()->json([
-        //         'success' => false,
-        //         'message' => 'Anda tidak memiliki izin untuk menghapus lapangan ini.'
-        //     ], 403);
-        // }
-
         if (!$field) {
             return response()->json([
                 'success' => false,
@@ -333,59 +323,73 @@ class FieldController extends Controller
         return response()->json($fields);
     }
     
-    public function getAvailableTimes(Request $request, $fieldId)
+    public function getAvailableTimes(Request $request)
     {
-        $validator = Validator::make(array_merge($request->all(), ['fieldId' => (int)$fieldId]), [
-            'fieldId' => 'required|exists:fields,fieldId',
-            'date' => 'required|date',
-        ]);
+        try {
+            $validator = Validator::make($request->all(), [
+                'fieldId' => 'required|exists:fields,fieldId',
+                'date' => 'required|date',
+                'excludeClosedId' => 'sometimes|integer|exists:reservations,reservationId'
+            ]);
 
-        if ($validator->fails()) {
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Parameter tidak valid',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            $fieldId = $request->fieldId;
+            $date = $request->date;
+            $excludeClosedId = $request->excludeClosedId;
+
+            // Ambil semua waktu untuk field ini
+            $allTimes = Time::select('timeId', 'time', 'status')
+                ->where('fieldId', $fieldId)
+                ->orderBy('time')
+                ->get();
+
+            // Ambil waktu yang sudah di-booking (exclude yang sedang di-edit)
+            $bookedQuery = ReservationDetail::where('fieldId', $fieldId)
+                ->whereDate('date', $date);
+
+            if ($excludeClosedId) {
+                $bookedQuery->whereHas('reservation', function($q) use ($excludeClosedId) {
+                    $q->where('reservationId', '!=', $excludeClosedId);
+                });
+            }
+
+            $bookedTimeIds = $bookedQuery->pluck('timeId')->toArray();
+
+            // Format response
+            $times = $allTimes->map(function($time) use ($bookedTimeIds) {
+                $status = 'available';
+                
+                if ($time->status !== 'available') {
+                    $status = 'non-available';
+                } elseif (in_array($time->timeId, $bookedTimeIds)) {
+                    $status = 'booked';
+                }
+
+                return [
+                    'timeId' => (string)$time->timeId,
+                    'time' => $time->time,
+                    'status' => $status
+                ];
+            });
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Waktu tersedia berhasil diambil',
+                'times' => $times->toArray()
+            ]);
+
+        } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Data yang diberikan tidak valid.',
-                'errors' => $validator->errors()
-            ], 422);
+                'message' => 'Gagal mengambil waktu tersedia'
+            ], 500);
         }
-
-        $date = $request->get('date');
-        
-        // Ambil semua waktu yang terkait dengan field (melalui relasi atau query)
-        // Asumsi: ada relasi field -> location -> times atau field langsung ke times
-        $allTimes = Time::select('timeId', 'time', 'status')
-            ->where('status', '!=', 'non-available') // Exclude deleted times
-            ->where('fieldId', (int)$fieldId)
-            ->orderBy('time')
-            ->get();
-
-        $result = [];
-        
-        foreach ($allTimes as $time) {
-            // Cek apakah waktu ini sudah dipesan untuk field dan tanggal tersebut
-            $isBooked = ReservationDetail::where('fieldId', (int)$fieldId)
-                ->where('timeId', $time->timeId)
-                ->where('date', $date)
-                ->exists();
-                
-            $status = 'available';
-            if ($isBooked) {
-                $status = 'booked';
-            } elseif ($time->status !== 'available') {
-                $status = 'unavailable';
-            }
-            
-            $result[] = [
-                'timeId' => $time->timeId,
-                'time' => $time->time,
-                'status' => $status
-            ];
-        }
-
-        return response()->json([
-            'success' => true,
-            'times' => $result,
-            'fieldId' => (int)$fieldId,
-            'date' => $date
-        ]);
     }
 }

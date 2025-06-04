@@ -21,6 +21,9 @@ jobs:
           key: ${{ secrets.BACKEND_SSH_KEY }}
           script: |
             rm -rf ~/resports-compose/backend/Backend-GenZett
+      
+      - name: List backend folder contents
+        run: ls -l ./backend/Backend-GenZett || echo "Folder tidak ditemukan"
 
       - name: Upload backend source code to VM via SCP
         uses: appleboy/scp-action@v0.1.7

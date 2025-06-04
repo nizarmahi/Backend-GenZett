@@ -31,9 +31,9 @@ jobs:
           host: ${{ secrets.BACKEND_SSH_HOST }}
           username: ${{ secrets.BACKEND_SSH_USER }}
           key: ${{ secrets.BACKEND_SSH_KEY }}
-          source: "./backend/Backend-GenZett"
+          source: "."
           target: "~/resports-compose/backend/Backend-GenZett"
-          strip_components: 1
+          strip_components: 0
 
       - name: SSH and redeploy Docker Compose
         uses: appleboy/ssh-action@v1.0.3

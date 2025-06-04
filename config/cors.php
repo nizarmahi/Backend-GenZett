@@ -17,7 +17,7 @@ return [
     //     // 'http://localhost:3000', 
     // ],
     'allowed_origins' => [
-    env('FRONTEND_URL', 'http://20.255.60.15'), // URL Frontend 
+    'http://20.255.60.15', // URL Frontend 
     'http://localhost:3000', 
 ],
 

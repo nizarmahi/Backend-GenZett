@@ -1,41 +1,44 @@
-name: Deploy Backend Laravel
+name: Deploy Backend Laravel to VM
 
 on:
   push:
     branches:
       - development
-  pull_request:
-    branches:
-      - development
 
 jobs:
-  deploy-backend:
+  deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Kode Backend
+      - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Deploy ke VM Backend via SSH
-        uses: appleboy/ssh-action@v0.1.10
+      - name: Clean old backend folder in VM
+        uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.BACKEND_SSH_HOST }}
           username: ${{ secrets.BACKEND_SSH_USER }}
           key: ${{ secrets.BACKEND_SSH_KEY }}
-          port: 22
           script: |
-            echo "🚀 Masuk ke VM Backend"
-            cd /home/genzett/resports-compose/backend/Backend-GenZett
+            rm -rf ~/resports-compose/backend/Backend-GenZett
 
-            git checkout development
+      - name: Upload backend source code to VM via SCP
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.BACKEND_SSH_HOST }}
+          username: ${{ secrets.BACKEND_SSH_USER }}
+          key: ${{ secrets.BACKEND_SSH_KEY }}
+          source: "./backend/Backend-GenZett"
+          target: "~/resports-compose/backend/Backend-GenZett"
+          strip_components: 1
 
-            echo "⚠️ Reset semua perubahan lokal dan bersihkan file yang tidak dilacak"
-            git fetch origin development
-            git reset --hard origin/development
-            # Bersihkan file/folder yang tidak dilacak dan diabaikan Git
-            git clean -fd
-
-            echo "🐳 Restart Docker Compose"
-            cd ../../
+      - name: SSH and redeploy Docker Compose
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.BACKEND_SSH_HOST }}
+          username: ${{ secrets.BACKEND_SSH_USER }}
+          key: ${{ secrets.BACKEND_SSH_KEY }}
+          script: |
+            cd ~/resports-compose
             docker compose down --remove-orphans
             docker compose up -d --build

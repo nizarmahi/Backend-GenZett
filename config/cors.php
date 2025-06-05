@@ -17,7 +17,8 @@ return [
     //     // 'http://localhost:3000', 
     // ],
     'allowed_origins' => [
-    'http://20.255.60.15', // URL Frontend 
+    'https://resports.web.id', // URL Frontend 
+    'https://20.255.60.15', // URL Frontend 
     'http://localhost:3000', 
 ],
 

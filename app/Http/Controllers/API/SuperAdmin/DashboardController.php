@@ -14,7 +14,7 @@ class DashboardController extends Controller
         // Total totalan
         $totalLapangan = DB::selectOne("SELECT COUNT(*) as total FROM fields")->total;
         $totalCabang = DB::selectOne("SELECT COUNT(*) as total FROM locations")->total;
-        $totalAdmin = DB::selectOne("SELECT COUNT(*) as total FROM users WHERE role = 'admin'")->total;
+        $totalAdmin = DB::selectOne("SELECT COUNT(*) as total FROM admins")->total;
         $totalCabor = DB::selectOne("SELECT COUNT(*) as total FROM sports")->total;
 
         // Range tanggal: 3 bulan terakhir sampai hari ini

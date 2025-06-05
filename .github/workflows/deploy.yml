@@ -3,10 +3,10 @@ name: Deploy Backend Laravel
 on:
   push:
     branches:
-      - main
+      - development
   pull_request:
     branches:
-      - main
+      - development
 
 jobs:
   deploy-backend:
@@ -25,11 +25,28 @@ jobs:
           port: 22
           script: |
             echo "🚀 Masuk ke VM Backend"
-            cd /home/genzett/resports-compose
-            echo "📦 Menarik update dari Git"
-            cd backend/Backend-GenZett
+            cd /home/genzett/resports-compose/backend/Backend-GenZett || exit 1
+          
+            echo "🔍 Branch saat ini"
+            git branch
+          
+            echo "🔍 Status sebelum update"
+            git status
+          
+            echo "📦 Simpan perubahan lokal jika ada"
+            git stash || echo "No local changes"
+          
+            echo "🔄 Checkout branch development"
+            git checkout development || exit 1
+          
+            echo "⬇️ Pull update terbaru"
             git pull origin development
+          
+            echo "🔍 Status setelah update"
+            git status
+          
             echo "🐳 Restart Docker Compose"
             cd ../../
-            docker compose down
+            docker compose down --remove-orphans
             docker compose up -d --build
+

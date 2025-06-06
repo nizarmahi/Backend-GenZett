@@ -4,7 +4,6 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
-use Carbon\Carbon;
 
 class MemberSeeder extends Seeder
 {
@@ -18,11 +17,17 @@ class MemberSeeder extends Seeder
             ['name' => 'Weekend Plan', 'description' => 'Akses weekend', 'discount' => 10.00, 'weeks' => 4],
         ];
 
-        for ($index = 0; $index < count($memberships); $index++) {
+        // Ambil kombinasi unik location_id dan sport_id dari tabel fields
+        $fieldCombinations = DB::table('fields')
+            ->select('locationId', 'sportId')
+            ->distinct()
+            ->get();
+
+        foreach ($fieldCombinations as $combo) {
             foreach ($memberships as $membership) {
                 DB::table('memberships')->insert([
-                    'locationId' => $index + 1,
-                    'sportId' => $index + 1,
+                    'locationId' => $combo->locationId,
+                    'sportId' => $combo->sportId,
                     'name' => $membership['name'],
                     'description' => $membership['description'],
                     'discount' => $membership['discount'],

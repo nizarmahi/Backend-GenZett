@@ -95,9 +95,9 @@ Route::group(['prefix' => 'reservations'], function () {
     Route::get('/sport', [ReservationController::class, 'getSports']);
     Route::get('/sport/{locationId}', [ReservationController::class, 'getSportsByLocation']);
     Route::get('/{locationId}/schedules', [ReservationController::class, 'getScheduleByLocation']);
-    // Route::get('/minimumPrice', [ReservationController::class, 'getMinPricePerLocation']);
+    Route::get('/getPrice/{locationId}', [ReservationController::class, 'getPriceByLocation']);
     Route::get('/{locationId}/minimumPrice', [ReservationController::class, 'getMinPriceByLocation']);
-
+    Route::get('/getMinPriceLocSport', [ReservationController::class, 'getMinPriceByLocationSport']);
 
     Route::get('/', [ReservationController::class, 'index']);
     Route::post('/', [ReservationController::class, 'store']);

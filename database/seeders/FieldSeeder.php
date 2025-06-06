@@ -4,59 +4,149 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
-use Carbon\Carbon;
 
 class FieldSeeder extends Seeder
 {
     public function run(): void
     {
-        $fields = [
-            // Sport IDs:1
-            ['locationId' => 1, 'sportId' => 1, 'name' => 'Lapangan Futsal 1', 'description' => 'Indoor'],
-            ['locationId' => 1, 'sportId' => 1, 'name' => 'Lapangan Futsal 2', 'description' => 'Indoor'],
-            ['locationId' => 1, 'sportId' => 1, 'name' => 'Lapangan Futsal 3', 'description' => 'Indoor'],
-            ['locationId' => 1, 'sportId' => 1, 'name' => 'Lapangan Futsal 4', 'description' => 'Indoor'],
-            ['locationId' => 2, 'sportId' => 1, 'name' => 'Lapangan Futsal 1', 'description' => 'Indoor'],
-            ['locationId' => 2, 'sportId' => 1, 'name' => 'Lapangan Futsal 2', 'description' => 'Indoor'],
-            ['locationId' => 3, 'sportId' => 1, 'name' => 'Lapangan Futsal 1', 'description' => 'Indoor'],
+        $fields = [];
 
-            // Sport IDs:2
-            ['locationId' => 1, 'sportId' => 2, 'name' => 'Lapangan Badminton 1', 'description' => 'Indoor'],
-            ['locationId' => 1, 'sportId' => 2, 'name' => 'Lapangan Badminton 2', 'description' => 'Indoor'],
-            ['locationId' => 2, 'sportId' => 2, 'name' => 'Lapangan Badminton 1', 'description' => 'Indoor'],
-            ['locationId' => 2, 'sportId' => 2, 'name' => 'Lapangan Badminton 2', 'description' => 'Indoor'],
-            ['locationId' => 2, 'sportId' => 2, 'name' => 'Lapangan Badminton 3', 'description' => 'Indoor'],
-            ['locationId' => 2, 'sportId' => 2, 'name' => 'Lapangan Badminton 4', 'description' => 'Indoor'],
-            ['locationId' => 4, 'sportId' => 2, 'name' => 'Lapangan Badminton 1', 'description' => 'Indoor'],
-            ['locationId' => 4, 'sportId' => 2, 'name' => 'Lapangan Badminton 2', 'description' => 'Indoor'],
-            ['locationId' => 4, 'sportId' => 2, 'name' => 'Lapangan Badminton 3', 'description' => 'Indoor'],
+        $locations = DB::table('locations')->pluck('locationName', 'locationId');
 
-            // Sport IDs:3
-            ['locationId' => 3, 'sportId' => 3, 'name' => 'Lapangan Basket 2', 'description' => 'Indoor'],
-            ['locationId' => 3, 'sportId' => 3, 'name' => 'Lapangan Basket 1', 'description' => 'Indoor'],
-            ['locationId' => 3, 'sportId' => 3, 'name' => 'Lapangan Basket 2', 'description' => 'Indoor'],
-            ['locationId' => 4, 'sportId' => 3, 'name' => 'Lapangan Basket 1', 'description' => 'Indoor'],
-            ['locationId' => 4, 'sportId' => 3, 'name' => 'Lapangan Basket 1', 'description' => 'Indoor'],
-            ['locationId' => 4, 'sportId' => 3, 'name' => 'Lapangan Basket 2', 'description' => 'Indoor'],
-            ['locationId' => 5, 'sportId' => 3, 'name' => 'Lapangan Basket 1', 'description' => 'Indoor'],
-            ['locationId' => 5, 'sportId' => 3, 'name' => 'Lapangan Basket 2', 'description' => 'Indoor'],
-            // Sport IDs:4
-            ['locationId' => 1, 'sportId' => 4, 'name' => 'Lapangan Voli 1', 'description' => 'Outdoor'],
-            ['locationId' => 1, 'sportId' => 4, 'name' => 'Lapangan Voli 2', 'description' => 'Outdoor'],
-            ['locationId' => 3, 'sportId' => 4, 'name' => 'Lapangan Voli 1', 'description' => 'Outdoor'],
-            ['locationId' => 3, 'sportId' => 4, 'name' => 'Lapangan Voli 2', 'description' => 'Outdoor'],
-            ['locationId' => 5, 'sportId' => 4, 'name' => 'Lapangan Voli 1', 'description' => 'Outdoor'],
-
-            // Sport IDs:5
-            ['locationId' => 4, 'sportId' => 5, 'name' => 'Lapangan Tennis 1', 'description' => 'Outdoor'],
-            ['locationId' => 4, 'sportId' => 5, 'name' => 'Lapangan Tennis 2', 'description' => 'Outdoor'],
-            ['locationId' => 5, 'sportId' => 5, 'name' => 'Lapangan Tennis 1', 'description' => 'Outdoor'],
-            ['locationId' => 5, 'sportId' => 5, 'name' => 'Lapangan Tennis 2', 'description' => 'Outdoor'],
-            ['locationId' => 5, 'sportId' => 5, 'name' => 'Lapangan Tennis 3', 'description' => 'Outdoor'],
-            ['locationId' => 5, 'sportId' => 5, 'name' => 'Lapangan Tennis 4', 'description' => 'Outdoor'],
+        // Futsal courts
+        $futsalCourts = [
+            [1, 4],
+            [2, 2],
+            [3, 1],
         ];
+        foreach ($futsalCourts as [$locationId, $count]) {
+            $locationName = $locations[$locationId] ?? "Unknown Location";
 
+            for ($i = 1; $i <= $count; $i++) {
+                $fields[] = [
+                    'locationId' => $locationId,
+                    'sportId' => 1,
+                    'name' => "Futsal - {$locationName} - Court {$i}",
+                    'description' => 'Indoor',
+                ];
+            }
+        }
+
+        // Badminton courts
+        $badmintonCourts = [
+            [1, 2],
+            [2, 4],
+            [4, 3],
+        ];
+        foreach ($badmintonCourts as [$locationId, $count]) {
+            $locationName = $locations[$locationId] ?? "Unknown Location";
+
+            for ($i = 1; $i <= $count; $i++) {
+                $fields[] = [
+                    'locationId' => $locationId,
+                    'sportId' => 2,
+                    'name' => "Badminton - {$locationName} - Court {$i}",
+                    'description' => 'Indoor',
+                ];
+            }
+        }
+
+        // Basketball courts
+        $basketballCourts = [
+            [3, 3],
+            [4, 3],
+            [5, 2],
+        ];
+        foreach ($basketballCourts as [$locationId, $count]) {
+            $locationName = $locations[$locationId] ?? "Unknown Location";
+
+            for ($i = 1; $i <= $count; $i++) {
+                $fields[] = [
+                    'locationId' => $locationId,
+                    'sportId' => 3,
+                    'name' => "Basketball - {$locationName} - Court {$i}",
+                    'description' => 'Indoor',
+                ];
+            }
+        }
+
+        // Volleyball courts
+        $volleyballCourts = [
+            [1, 2],
+            [3, 2],
+            [5, 1],
+        ];
+        foreach ($volleyballCourts as [$locationId, $count]) {
+            $locationName = $locations[$locationId] ?? "Unknown Location";
+
+            for ($i = 1; $i <= $count; $i++) {
+                $fields[] = [
+                    'locationId' => $locationId,
+                    'sportId' => 4,
+                    'name' => "Voli - {$locationName} - Court {$i}",
+                    'description' => 'Outdoor',
+                ];
+            }
+        }
+
+        // Tennis courts
+        $tennisCourts = [
+            [4, 2],
+            [5, 4],
+        ];
+        foreach ($tennisCourts as [$locationId, $count]) {
+            $locationName = $locations[$locationId] ?? "Unknown Location";
+
+            for ($i = 1; $i <= $count; $i++) {
+                $fields[] = [
+                    'locationId' => $locationId,
+                    'sportId' => 5,
+                    'name' => "Tennis - {$locationName} - Court {$i}",
+                    'description' => 'Outdoor',
+                ];
+            }
+        }
+
+        // Handball courts (sportId = 6)
+        $handballCourts = [
+            [2, 2],
+            [5, 1],
+        ];
+        foreach ($handballCourts as [$locationId, $count]) {
+            $locationName = $locations[$locationId] ?? "Unknown Location";
+
+            for ($i = 1; $i <= $count; $i++) {
+                $fields[] = [
+                    'locationId' => $locationId,
+                    'sportId' => 6,
+                    'name' => "Football - {$locationName} - Court {$i}",
+                    'description' => 'Indoor',
+                ];
+            }
+        }
+
+        // Sepak Bola / Football courts (sportId = 7)
+        $footballCourts = [
+            [1, 1],
+            [4, 2],
+        ];
+        foreach ($footballCourts as [$locationId, $count]) {
+            $locationName = $locations[$locationId] ?? "Unknown Location";
+
+            for ($i = 1; $i <= $count; $i++) {
+                $fields[] = [
+                    'locationId' => $locationId,
+                    'sportId' => 7,
+                    'name' => "HandBall - {$locationName} - Field {$i}",
+                    'description' => 'Outdoor',
+                ];
+            }
+        }
+
+        // Insert to DB
         foreach ($fields as $field) {
+            $locationName = $locations[$locationId] ?? "Unknown Location";
+
             DB::table('fields')->insert([
                 ...$field,
                 'created_at' => now(),
@@ -64,5 +154,4 @@ class FieldSeeder extends Seeder
             ]);
         }
     }
-
 }

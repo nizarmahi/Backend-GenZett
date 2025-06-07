@@ -11,6 +11,7 @@ use App\Models\Membership;
 use App\Models\Payment;
 use App\Models\Time;
 use Illuminate\Support\Facades\Validator;
+use Tymon\JWTAuth\Facades\JWTAuth;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -828,38 +829,107 @@ class ReservationController extends Controller
         }
     }
 
+    
+
     public function userReservations(Request $request)
     {
-        $userId = $request->query('user_id');
+        try {
+            $payload = JWTAuth::parseToken()->getPayload();
+            $userId = $payload->get('user_id');
+            
+            if (!$userId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized Access'
+                ], 403);
+            }
 
-        if (!$userId) {
+            $reservations = Reservation::with([
+                'details.field.location',
+                'details.field.sport',
+                'details.time',
+                'user',
+                'payment'
+            ])->where('userId', $userId)->get();
+
+            $user = $reservations->first()?->user;
+
+            $formattedReservations = $reservations->map(function ($reservation) {
+                $user = $reservation->user;
+                $detail = $reservation->details->first(); // ambil detail pertama untuk data lapangan & waktu
+
+                // Waktu & status reservasi
+                $today = now()->format('Y-m-d');
+                $status = 'Upcoming';
+                if ($detail) {
+                    if ($detail->date == $today) {
+                        $status = 'Ongoing';
+                    } elseif ($detail->date < $today) {
+                        $status = 'Completed';
+                    }
+                }
+
+                $totalAmount = $reservation->details->sum(fn($d) => $d->time->price ?? 0);
+                $totalPaid = $reservation->payment->totalPaid ?? 0;
+                $remainingAmount = $totalAmount - $totalPaid;
+                $courtName = explode(' - ', $detail->field->name ?? '');
+                $paymentStatus = $totalPaid > 0 && $totalPaid >= $totalAmount ? 'Lunas' : 'DP (' . $remainingAmount . ')';
+                if ($status == 'Completed') {
+                    $paymentStatus = 'Lunas';
+                } 
+
+                return [
+                    "reservationId" => $reservation->reservationId,
+                    "bookingName" => $reservation->name,
+                    "cabang" => $detail->field->location->locationName ?? null,
+                    "lapangan" => $courtName[2] . ' - ' . $courtName[0],
+                    "paymentStatus" => $paymentStatus,
+                    "paymentType" => $reservation->paymentType,
+                    "reservationStatus" => $status,
+                    "totalAmount" => $totalAmount,
+                    "totalPaid" => $totalPaid,
+                    "remainingAmount" => $remainingAmount,
+                    "date" => $detail->date ?? null,
+                    "details" => $reservation->details->map(function ($d) use ($courtName, $totalAmount, $totalPaid, $remainingAmount ) {
+                        return [
+                            "locationName" => $d->field->location->locationName ?? null,
+                            "sportName" => $d->field->sport->sportName ?? null,
+                            "time" => date('H:i', strtotime($d->time->time)) . ' - ' . date('H:i', strtotime($d->time->time . ' +1 hour')),
+                            "lapangan" => $d->field->name ?? null,
+                            "price" => $d->time->price ?? 0
+                        ];
+                    }),
+                    "created_at" => $reservation->created_at,
+                    "updated_at" => $reservation->updated_at
+                ];
+            });
+
+            $data = [
+                'UserName' => $user->name ?? null,
+                'whatsapp' => 'wa.me/+62' . ltrim($user->phone, '0'),
+                'email' => $user->email ?? null,
+                'count' => $formattedReservations->count(),
+                'reservations' => $formattedReservations
+            ];
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Reservasi berhasil diambil',
+                'data' => $data
+            ]);
+
+        } catch (JWTException $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Parameter user_id wajib diisi.',
-                'data' => []
-            ], 400);
+                'message' => 'Token tidak valid atau tidak ditemukan',
+                'error' => $e->getMessage(),
+            ], 401);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan',
+                'error' => $e->getMessage(),
+            ], 500);
         }
-
-        // Ambil semua reservasi dengan relasi user dan details
-        $reservations = Reservation::with(['details', 'user'])
-            ->where('userId', $userId)
-            ->get();
-
-        // Ambil 1 data user dari salah satu reservasi (karena user-nya pasti sama)
-        $user = $reservations->first()?->user;
-
-        // Hilangkan properti 'user' dari setiap item dalam data
-        $cleanedReservations = $reservations->map(function ($reservation) {
-            $res = $reservation->toArray();
-            unset($res['user']);
-            return $res;
-        });
-
-        return response()->json([
-            'success' => true,
-            'message' => 'User reservations retrieved successfully',
-            'user' => $user,
-            'data' => $cleanedReservations
-        ]);
     }
 }

@@ -13,6 +13,7 @@ use App\Models\Time;
 use Illuminate\Support\Facades\Validator;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 
 /**
  * @group Reservation Management
@@ -829,7 +830,107 @@ class ReservationController extends Controller
         }
     }
 
-    
+    // public function userReservations(Request $request)
+    // {
+    //     try {
+    //         $payload = JWTAuth::parseToken()->getPayload();
+    //         $userId = $payload->get('user_id');
+            
+    //         if (!$userId) {
+    //             return response()->json([
+    //                 'success' => false,
+    //                 'message' => 'Unauthorized Access'
+    //             ], 403);
+    //         }
+
+    //         $reservations = Reservation::with([
+    //             'details.field.location',
+    //             'details.field.sport',
+    //             'details.time',
+    //             'user',
+    //             'payment'
+    //         ])->where('userId', $userId)->get();
+
+    //         $user = $reservations->first()?->user;
+
+    //         $formattedReservations = $reservations->map(function ($reservation) {
+    //             $user = $reservation->user;
+    //             $detail = $reservation->details->first(); // ambil detail pertama untuk data lapangan & waktu
+
+    //             // Waktu & status reservasi
+    //             $today = now()->format('Y-m-d');
+    //             $status = 'Upcoming';
+    //             if ($detail) {
+    //                 if ($detail->date == $today) {
+    //                     $status = 'Ongoing';
+    //                 } elseif ($detail->date < $today) {
+    //                     $status = 'Completed';
+    //                 }
+    //             }
+
+    //             $totalAmount = $reservation->details->sum(fn($d) => $d->time->price ?? 0);
+    //             $totalPaid = $reservation->payment->totalPaid ?? 0;
+    //             $remainingAmount = $totalAmount - $totalPaid;
+    //             $courtName = explode(' - ', $detail->field->name ?? '');
+    //             $paymentStatus = $totalPaid > 0 && $totalPaid >= $totalAmount ? 'Lunas' : 'DP ( Rp. ' . $remainingAmount . ' )';
+    //             if ($status == 'Completed') {
+    //                 $paymentStatus = 'Lunas';
+    //             } 
+
+    //             return [
+    //                 "reservationId" => $reservation->reservationId,
+    //                 "bookingName" => $reservation->name,
+    //                 "cabang" => $detail->field->location->locationName ?? null,
+    //                 "lapangan" => $courtName[2] . ' - ' . $courtName[0],
+    //                 "paymentStatus" => $paymentStatus,
+    //                 "paymentType" => $reservation->paymentType,
+    //                 "reservationStatus" => $status,
+    //                 "totalAmount" => $totalAmount,
+    //                 "totalPaid" => $totalPaid,
+    //                 "remainingAmount" => $remainingAmount,
+    //                 "date" => $detail->date ?? null,
+    //                 "details" => $reservation->details->map(function ($d) use ($courtName, $totalAmount, $totalPaid, $remainingAmount ) {
+    //                     return [
+    //                         "locationName" => $d->field->location->locationName ?? null,
+    //                         "sportName" => $d->field->sport->sportName ?? null,
+    //                         "time" => date('H:i', strtotime($d->time->time)) . ' - ' . date('H:i', strtotime($d->time->time . ' +1 hour')),
+    //                         "lapangan" => $d->field->name ?? null,
+    //                         "price" => $d->time->price ?? 0
+    //                     ];
+    //                 }),
+    //                 "created_at" => $reservation->created_at,
+    //                 "updated_at" => $reservation->updated_at
+    //             ];
+    //         });
+
+    //         $data = [
+    //             'UserName' => $user->name ?? null,
+    //             'whatsapp' => 'wa.me/+62' . ltrim($user->phone, '0'),
+    //             'email' => $user->email ?? null,
+    //             'count' => $formattedReservations->count(),
+    //             'reservations' => $formattedReservations
+    //         ];
+
+    //         return response()->json([
+    //             'success' => true,
+    //             'message' => 'Reservasi berhasil diambil',
+    //             'data' => $data
+    //         ]);
+
+    //     } catch (JWTException $e) {
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => 'Token tidak valid atau tidak ditemukan',
+    //             'error' => $e->getMessage(),
+    //         ], 401);
+    //     } catch (\Exception $e) {
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => 'Terjadi kesalahan',
+    //             'error' => $e->getMessage(),
+    //         ], 500);
+    //     }
+    // }
 
     public function userReservations(Request $request)
     {
@@ -858,22 +959,43 @@ class ReservationController extends Controller
                 $user = $reservation->user;
                 $detail = $reservation->details->first(); // ambil detail pertama untuk data lapangan & waktu
 
-                // Waktu & status reservasi
-                $today = now()->format('Y-m-d');
+                // Perbaikan: Waktu & status reservasi berdasarkan tanggal dan waktu
+                $now = now();
+                $today = $now->format('Y-m-d');
+                $currentTime = $now->format('H:i:s');
+                
                 $status = 'Upcoming';
                 if ($detail) {
-                    if ($detail->date == $today) {
-                        $status = 'Ongoing';
-                    } elseif ($detail->date < $today) {
+                    $reservationDate = $detail->date;
+                    $reservationTime = $detail->time->time ?? '00:00:00';
+                    
+                    // Buat datetime lengkap untuk perbandingan yang akurat
+                    $reservationDateTime = Carbon::parse($reservationDate . ' ' . $reservationTime);
+                    $reservationEndTime = $reservationDateTime->copy()->addHour(); // Asumsi durasi 1 jam
+                    
+                    if ($reservationDate < $today) {
+                        // Jika tanggal sudah lewat
                         $status = 'Completed';
+                    } elseif ($reservationDate == $today) {
+                        // Jika hari ini, cek waktu
+                        if ($now >= $reservationEndTime) {
+                            $status = 'Completed';
+                        } elseif ($now >= $reservationDateTime) {
+                            $status = 'Ongoing';
+                        } else {
+                            $status = 'Upcoming';
+                        }
                     }
+                    // Jika tanggal di masa depan, tetap 'Upcoming'
                 }
 
                 $totalAmount = $reservation->details->sum(fn($d) => $d->time->price ?? 0);
                 $totalPaid = $reservation->payment->totalPaid ?? 0;
                 $remainingAmount = $totalAmount - $totalPaid;
                 $courtName = explode(' - ', $detail->field->name ?? '');
-                $paymentStatus = $totalPaid > 0 && $totalPaid >= $totalAmount ? 'Lunas' : 'DP (' . $remainingAmount . ')';
+                $paymentStatus = $totalPaid > 0 && $totalPaid >= $totalAmount ? 'Lunas' : 'DP ( Rp. ' . $remainingAmount . ' )';
+                
+                // Perbaikan: Jika reservasi sudah selesai, otomatis lunas
                 if ($status == 'Completed') {
                     $paymentStatus = 'Lunas';
                 } 

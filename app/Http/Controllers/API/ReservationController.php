@@ -43,6 +43,7 @@ class ReservationController extends Controller
             'details.time',
             'user'
         ])
+            ->where('paymentStatus', '!=', 'closed')
             ->when($locationId, function ($query) use ($locationId) {
                 $query->whereHas('details.field.location', function ($q) use ($locationId) {
                     $q->where('locationId', $locationId);
@@ -589,7 +590,7 @@ class ReservationController extends Controller
     {
         try {
             $startDate = now()->format('Y-m-d');
-            $endDate = now()->addDays(7)->format('Y-m-d');
+            $endDate = now()->addDays(6)->format('Y-m-d');
 
             $dates = collect();
             $current = strtotime($startDate);
@@ -623,14 +624,10 @@ class ReservationController extends Controller
             }
 
             $sportId = $matchedSport->sportId;
-
-            // Get all fields for the location and sport
             $fields = DB::table('fields')
                 ->where('locationId', $locationId)
                 ->where('sportId', $sportId)
                 ->get();
-
-            // Preload all existing reservations for these fields and dates
             $existingReservations = DB::table('reservation_details')
                 ->whereIn('fieldId', $fields->pluck('fieldId'))
                 ->whereIn('date', $dates)
@@ -638,31 +635,54 @@ class ReservationController extends Controller
                 ->groupBy(['date', 'fieldId', 'timeId']);
 
             $scheduleData = [];
+            $currentTime = now('Asia/Jakarta');
+            $currentHour = $currentTime->format('H:i:s');
 
             foreach ($fields as $field) {
                 $timeSlots = DB::table('times')
                     ->where('fieldId', $field->fieldId)
+                    ->where('status', 'available')
                     ->orderBy('time')
                     ->get();
 
                 $dailySchedules = [];
 
                 foreach ($dates as $date) {
-                    $slots = $timeSlots->map(function ($slot) use ($field, $date, $existingReservations) {
-                        $isBooked = isset($existingReservations[$date][$field->fieldId][$slot->timeId]);
+                    $isToday = ($date == $startDate);
+
+                    $filteredSlots = $timeSlots->filter(function ($slot) use ($isToday, $currentHour) {
+                        if (!$isToday) {
+                            return true;
+                        }
+                        return $slot->time > $currentHour;
+                    });
+
+                    $slots = $filteredSlots->map(function ($slot) use ($field, $date, $existingReservations) {
+
+                        $isBooked = false;
+
+                        if (
+                            isset($existingReservations[$date]) &&
+                            isset($existingReservations[$date][$field->fieldId]) &&
+                            isset($existingReservations[$date][$field->fieldId][$slot->timeId])
+                        ) {
+
+                            $reservationData = $existingReservations[$date][$field->fieldId][$slot->timeId];
+                            $isBooked = $reservationData->isNotEmpty();
+                        }
 
                         return [
                             'timeId' => $slot->timeId,
                             'time' => $slot->time,
                             'price' => 'Rp ' . number_format($slot->price, 0, ',', '.'),
-                            'status' => $isBooked ? 'booked' : 'available',
-                            'isBooked' => $isBooked
+                            'status' => $slot->status,
+                            'isBooked' => $isBooked,
                         ];
                     });
 
                     $dailySchedules[] = [
                         'date' => $date,
-                        'schedules' => $slots,
+                        'schedules' => $slots->values(),
                     ];
                 }
 
@@ -720,21 +740,25 @@ class ReservationController extends Controller
             'payment' => $payment
         ]);
     }
-    /* Ambil Harga Minimum Berdasarkan LokasiId
-    *
-    * Mengambil harga minimum dari times untuk setiap lokasi.
-    *
-    * @return \Illuminate\Http\JsonResponse
-    */
-    public function getMinPriceByLocation($locationId)
+    /**
+     * Ambil Harga Minimum dan Maksimum Berdasarkan LokasiId
+     *
+     * Mengambil harga minimum dan maksimum dari tabel times untuk setiap lokasi.
+     *
+     * @param int $locationId
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getPriceByLocation($locationId)
     {
         try {
-            $minPrice = DB::table('fields')
+            $query = DB::table('fields')
                 ->join('times', 'fields.fieldId', '=', 'times.fieldId')
-                ->where('fields.locationId', $locationId)
-                ->min('times.price');
+                ->where('fields.locationId', $locationId);
 
-            if ($minPrice === null) {
+            $minPrice = (clone $query)->min('times.price');
+            $maxPrice = (clone $query)->max('times.price');
+
+            if ($minPrice === null || $maxPrice === null) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Tidak ada harga ditemukan untuk lokasi ini.'
@@ -745,57 +769,60 @@ class ReservationController extends Controller
                 'success' => true,
                 'locationId' => $locationId,
                 'minPrice' => 'Rp ' . number_format($minPrice, 0, ',', '.'),
+                'maxPrice' => 'Rp ' . number_format($maxPrice, 0, ',', '.'),
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal mengambil harga minimum.',
+                'message' => 'Gagal mengambil harga.',
                 'error' => $e->getMessage(),
             ], 500);
         }
     }
-    /* Ambil Harga Minimum Per Lokasi
+
+    /* Ambil Harga Minimum berdasarkan Lokasi dan Sport
     *
     * Mengambil harga minimum dari times untuk setiap lokasi.
     *
     * @return \Illuminate\Http\JsonResponse
     */
-    public function getMinPricePerLocation()
+    public function getMinPriceByLocationSport(Request $request)
     {
-        try {
-            $locations = DB::table('locations')
-                ->select(
-                    'locations.locationId',
-                    'locations.locationName',
-                    'locations.locationPath as imageUrl',
-                    'locations.address',
-                    DB::raw('MIN(times.price) as minPrice')
-                )
-                ->leftJoin('fields', 'locations.locationId', '=', 'fields.locationId')
-                ->leftJoin('times', 'fields.fieldId', '=', 'times.fieldId')
-                ->groupBy('locations.locationId', 'locations.locationName', 'locations.locationPath', 'locations.address')
-                ->get();
+        $locationId = $request->input('locationId');
+        $sportName = $request->input('sportName');
 
-            $formattedLocations = $locations->map(function ($location) {
-                return [
-                    'locationId' => $location->locationId,
-                    'locationName' => $location->locationName,
-                    'address' => $location->address,
-                    'imageUrl' => $location->imageUrl
-                        ? asset('storage/' . $location->imageUrl)
-                        : asset('/images/futsal.png'),
-                    'minPrice' => $location->minPrice ? number_format($location->minPrice, 0, ',', '.') : 0,
-                ];
-            });
+        if (!$locationId || !$sportName) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Parameter locationId dan sportName wajib diisi.'
+            ], 400);
+        }
+
+        try {
+            $minPrice = DB::table('fields')
+                ->join('times', 'fields.fieldId', '=', 'times.fieldId')
+                ->join('sports', 'fields.sportId', '=', 'sports.sportId')
+                ->where('fields.locationId', $locationId)
+                ->where('sports.sportName', $sportName)
+                ->min('times.price');
+
+            if ($minPrice === null) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Tidak ada harga ditemukan untuk lokasi dan olahraga ini.'
+                ], 404);
+            }
 
             return response()->json([
                 'success' => true,
-                'data' => $formattedLocations,
+                'locationId' => $locationId,
+                'sportName' => $sportName,
+                'minPrice' => $minPrice,
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal mengambil data harga minimum per lokasi.',
+                'message' => 'Gagal mengambil harga minimum.',
                 'error' => $e->getMessage(),
             ], 500);
         }
@@ -823,7 +850,7 @@ class ReservationController extends Controller
 
         // Hilangkan properti 'user' dari setiap item dalam data
         $cleanedReservations = $reservations->map(function ($reservation) {
-            $res = $reservation->totoArray();
+            $res = $reservation->toArray();
             unset($res['user']);
             return $res;
         });

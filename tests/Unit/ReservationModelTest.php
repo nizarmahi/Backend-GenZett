@@ -15,7 +15,7 @@ class ReservationModelTest extends TestCase
 {
     use RefreshDatabase;
 
-#[Test]
+    #[Test]
     public function it_belongs_to_a_user()
     {
         $user = User::factory()->create();
@@ -25,7 +25,7 @@ class ReservationModelTest extends TestCase
         $this->assertEquals($user->userId, $reservation->user->userId);
     }
 
-#[Test]
+    #[Test]
     public function it_has_many_reservation_details()
     {
         $reservation = Reservation::factory()->create();
@@ -34,7 +34,7 @@ class ReservationModelTest extends TestCase
         $this->assertCount(2, $reservation->details);
     }
 
-#[Test]
+    #[Test]
     public function it_has_one_payment()
     {
         $reservation = Reservation::factory()->create();
@@ -44,7 +44,7 @@ class ReservationModelTest extends TestCase
         $this->assertEquals($payment->paymentId, $reservation->payment->paymentId);
     }
 
-#[Test]
+    #[Test]
     public function it_has_correct_fillable_attributes()
     {
         $fillable = ['userId', 'name', 'paymentStatus', 'total', 'paymentType'];

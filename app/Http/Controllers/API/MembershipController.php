@@ -19,61 +19,74 @@ class MembershipController extends Controller
         $page = (int)$request->input('page', 1);
         $limit = (int)$request->input('limit', 10);
         $search = $request->input('search');
-        $sports = $request->input('sports') ? explode('.', $request->input('sports')) : [];
-        $locations = $request->input('locations') ? explode('.', $request->input('locations')) : [];
+        $sports = $request->input('sports');
+        $locations = $request->input('locations');
+        $showAll = filter_var($request->input('all'), FILTER_VALIDATE_BOOLEAN); // cek parameter all=true
 
         $query = Membership::with(['locations', 'sports']);
 
         // Apply filters
         if (!empty($sports)) {
-            $query->whereIn('sportId', $sports);
+            $query->whereHas('sports', function ($q) use ($sports) {
+                $q->where('sportName', $sports);
+            });
         }
 
         if (!empty($locations)) {
-            $query->whereIn('locationId', $locations);
+            $query->whereHas('locations', function ($q) use ($locations) {
+                $q->where('locationName', $locations);
+            });
         }
 
         if (!empty($search)) {
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', '%' . $search . '%')
-                  ->orWhereHas('locations', function ($q) use ($search) {
-                      $q->where('locationName', 'like', '%' . $search . '%');
-                  })
-                  ->orWhereHas('sports', function ($q) use ($search) {
-                      $q->where('sportName', 'like', '%' . $search . '%');
-                  });
+                    ->orWhereHas('locations', function ($q) use ($search) {
+                        $q->where('locationName', 'like', '%' . $search . '%');
+                    })
+                    ->orWhereHas('sports', function ($q) use ($search) {
+                        $q->where('sportName', 'like', '%' . $search . '%');
+                    });
             });
         }
 
         $totalMemberships = $query->count();
-        $offset = ($page - 1) * $limit;
-        $memberships = $query->skip($offset)->take($limit)->get();
 
-        $formattedMemberships = $memberships->map(function($membership) {
+        // Ambil data
+        if ($showAll) {
+            $memberships = $query->get();
+            $offset = 0;
+            $limit = $totalMemberships;
+        } else {
+            $offset = ($page - 1) * $limit;
+            $memberships = $query->skip($offset)->take($limit)->get();
+        }
+
+        $formattedMemberships = $memberships->map(function ($membership) use ($totalMemberships) {
             return [
                 'membershipId' => $membership->membershipId,
                 'name' => $membership->name,
                 'description' => $membership->description,
                 'discount' => $membership->discount,
                 'weeks' => $membership->weeks,
-                'locationId' => $membership->locations->locationId,
+                'locationId' => $membership->locationId,
                 'locationName' => $membership->locations->locationName ?? null,
-                'sportId' => $membership->sports->sportId,
+                'sportId' => $membership->sportId,
                 'sportName' => $membership->sports->sportName ?? null,
+                'totalMemberships' => $totalMemberships
             ];
         });
 
         return response()->json([
             'success' => true,
             'time' => now()->toISOString(),
-            'message' => 'Data Paket Langganan berhasil diambil',
+            'message' => $showAll ? 'Semua data Paket Langganan berhasil diambil' : 'Data Paket Langganan berhasil diambil',
             'totalMemberships' => $totalMemberships,
             'offset' => $offset,
             'limit' => $limit,
             'data' => $formattedMemberships
-        ], 200);
+        ]);
     }
-
 
     /**
      * Store a newly created resource in storage.
@@ -226,5 +239,68 @@ class MembershipController extends Controller
             'time' => now()->toISOString(),
             'message' => 'Paket Langganan berhasil dihapus'
         ], 200);
+    }
+
+    /**
+     * Display a listing of the resource without pagination.
+     */
+    public function getAllMembers(Request $request)
+    {
+        $search = $request->input('search');
+        $sports = $request->input('sports');
+        $locations = $request->input('locations');
+
+        $query = Membership::with(['locations', 'sports']);
+
+        // Apply filters
+        if (!empty($sports)) {
+            $query->whereHas('sports', function ($q) use ($sports) {
+                $q->where('sportName', $sports);
+            });
+        }
+
+        if (!empty($locations)) {
+            $query->whereHas('locations', function ($q) use ($locations) {
+                $q->where('locationName', $locations);
+            });
+        }
+
+        if (!empty($search)) {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', '%' . $search . '%')
+                    ->orWhereHas('locations', function ($q) use ($search) {
+                        $q->where('locationName', 'like', '%' . $search . '%');
+                    })
+                    ->orWhereHas('sports', function ($q) use ($search) {
+                        $q->where('sportName', 'like', '%' . $search . '%');
+                    });
+            });
+        }
+
+        $memberships = $query->get();
+        $totalMemberships = $memberships->count();
+
+        $formattedMemberships = $memberships->map(function ($membership) use ($totalMemberships) {
+            return [
+                'membershipId' => $membership->membershipId,
+                'name' => $membership->name,
+                'description' => $membership->description,
+                'discount' => $membership->discount,
+                'weeks' => $membership->weeks,
+                'locationId' => $membership->locationId,
+                'locationName' => $membership->locations->locationName ?? null,
+                'sportId' => $membership->sportId,
+                'sportName' => $membership->sports->sportName ?? null,
+                'totalMemberships' => $totalMemberships
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'time' => now()->toISOString(),
+            'message' => 'Semua data Paket Langganan berhasil diambil',
+            'totalMemberships' => $totalMemberships,
+            'data' => $formattedMemberships
+        ]);
     }
 }

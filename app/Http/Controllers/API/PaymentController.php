@@ -107,8 +107,9 @@ class PaymentController extends Controller
                 'xendit_status' => $xenditInvoice->getStatus(),
                 'expiry_date' => $xenditInvoice->getExpiryDate(),
                 'payment_methods' => ['QRIS'],
-                'success_redirect_url' => 'https://github.com',
-                'failure_redirect_url' => 'https://google.com'
+                // 'success_redirect_url' => 'https://resports.web.id/history',
+                'success_redirect_url' => 'http://localhost:3000/history',
+                'failure_redirect_url' => 'https://resports.web.id/reservation'
             ]);
 
             return response()->json([

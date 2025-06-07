@@ -25,7 +25,7 @@ class ClosedController extends Controller
             'details.field.sport',
             'details.time'
         ])
-        // ->where('paymentStatus', 'closed')
+        ->where('paymentStatus', 'closed')
         ->when($locationId, function ($query) use ($locationId) {
             $query->whereHas('details.field.location', function ($q) use ($locationId) {
                 $q->where('locationId', $locationId);

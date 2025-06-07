@@ -392,4 +392,16 @@ class FieldController extends Controller
             ], 500);
         }
     }
+
+    public function getPrice($id)
+    {
+        $price = Time::select('time', 'price')
+            ->where('fieldId', $id)
+            ->where('status', 'available')
+            ->orderBy('time')
+            ->get();
+            
+        return response()->json($price);
+    }
+
 }

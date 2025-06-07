@@ -89,7 +89,7 @@ class LocationController extends Controller
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'locationName' => 'required|string|max:255',
+            'locationName' => 'required|string|max:255|unique:locations,locationName',
             'locationPath' => 'required|image|mimes:jpeg,png,jpg,svg|max:2048',
             'address' => 'required|string',
             'description' => 'required|string',
@@ -103,14 +103,13 @@ class LocationController extends Controller
             ], 422);
         }
 
-        // Simpan gambar
         $path = $request->file('locationPath')->store('locations', 'public');
 
         $location = Location::create([
             'locationName' => $request->locationName,
             'description' => $request->description,
             'address' => $request->address,
-            'locationPath' => $path, // simpan path
+            'locationPath' => $path,
         ]);
 
         return response()->json([
@@ -174,27 +173,29 @@ class LocationController extends Controller
                 'message' => "Lokasi dengan ID {$id} tidak ditemukan"
             ], 404);
         }
-
         $validated = $request->validate([
-            'locationName' => 'nullable|string|max:255',
+            'locationName' => 'nullable|string|max:255|unique:locations,locationName,' . $id . ',locationId',
             'description' => 'nullable|string',
             'address' => 'nullable|string',
             'locationPath' => 'nullable|image|mimes:jpeg,png,jpg,svg|max:2048',
         ]);
 
+        // if (empty($validated)) {
+        //     return response()->json([
+        //         'success' => false,
+        //         'message' => 'Tidak ada data yang dikirim untuk diperbarui.'
+        //     ], 400);
+        // }
+
+
         if ($request->hasFile('locationPath')) {
-            // Hapus gambar lama
             if ($location->locationPath && Storage::disk('public')->exists($location->locationPath)) {
                 Storage::disk('public')->delete($location->locationPath);
             }
 
-            // Simpan gambar baru
             $path = $request->file('locationPath')->store('locations', 'public');
             $validated['locationPath'] = $path;
         }
-
-        Log::info('Validated data:', $validated);
-
 
         $location->fill($validated);
         $location->save();

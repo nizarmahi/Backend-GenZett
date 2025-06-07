@@ -246,6 +246,14 @@ class ReservationController extends Controller
             }
         }
 
+        if ($request->paymentType === 'membership' && !$request->membershipId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Membership belum dipilih.',
+                'invalidField' => $field,
+            ], 422);
+        }
+
         $details = collect($request->details);
 
         $conflicts = [];
@@ -590,7 +598,8 @@ class ReservationController extends Controller
     {
         try {
             $startDate = now()->format('Y-m-d');
-            $endDate = now()->addDays(6)->format('Y-m-d');
+            $endDate = now()->addMonths(2)->format('Y-m-d');
+            // $endDate = now()->addDays(6)->format('Y-m-d');
 
             $dates = collect();
             $current = strtotime($startDate);

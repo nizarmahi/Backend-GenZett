@@ -92,8 +92,9 @@ class PaymentController extends Controller
                 'description' => 'Pembayaran reservasi',
                 'amount' => $request->totalPaid,
                 'payment_methods' => ['QRIS'],
-                'success_redirect_url' => 'https://github.com',
-                'failure_redirect_url' => 'https://google.com'
+                // 'success_redirect_url' => 'https://resports.web.id/history',
+                'success_redirect_url' => 'http://localhost:3000/history',
+                'failure_redirect_url' => 'https://resports.web.id/reservation'
             ];
 
             $xenditInvoice = $this->invoiceApi->createInvoice($createInvoiceRequest);

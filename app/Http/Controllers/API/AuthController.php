@@ -131,8 +131,8 @@ class AuthController extends Controller
     public function editAdminProfile(Request $request, $id)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'phone' => 'required|string|max:255',
+            'name' => 'nullable|string|max:255',
+            'phone' => 'nullable|string|max:255',
         ]);
 
         $admin = Admin::findOrFail($id);

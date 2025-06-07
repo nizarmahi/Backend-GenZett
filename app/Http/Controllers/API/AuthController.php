@@ -88,6 +88,7 @@ class AuthController extends Controller
             'name' => $user->name,
             'role' => $user->role,
             'phone' => $user->phone,
+            'created_at' => $user->created_at,
         ];
 
         // Jika role-nya admin, tambahkan location_id

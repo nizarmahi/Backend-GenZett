@@ -28,13 +28,13 @@ class MembershipController extends Controller
         // Apply filters
         if (!empty($sports)) {
             $query->whereHas('sports', function ($q) use ($sports) {
-                $q->where('sportName', $sports);
+                $q->where('sportId', $sports);
             });
         }
 
         if (!empty($locations)) {
             $query->whereHas('locations', function ($q) use ($locations) {
-                $q->where('locationName', $locations);
+                $q->where('locationId', $locations);
             });
         }
 

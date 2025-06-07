@@ -34,8 +34,8 @@ Route::post('register', [AuthController::class, 'register']);
 Route::post('login', [AuthController::class, 'login']);
 Route::post('logout', [AuthController::class, 'logout']);
 Route::middleware('auth:api')->group(function () {
-    Route::put('editAdminProfile/{id}', [AuthController::class, 'editAdminProfile']);
-    Route::post('change-password', [AuthController::class, 'changePassword']);
+Route::put('editAdminProfile/{id}', [AuthController::class, 'editAdminProfile']);
+Route::post('change-password', [AuthController::class, 'changePassword']);
 });
 
 
@@ -89,6 +89,7 @@ Route::group(['prefix' => 'fields'], function () {
     Route::put('/{id}', [FieldController::class, 'update']);
     Route::delete('/{id}', [FieldController::class, 'delete']);
     Route::get('/availableTimes/{fieldId}', [FieldController::class, 'getAvailableTimes']);
+    Route::get('/getPrice/{id}', [FieldController::class, 'getPrice']);
 });
 Route::group(['prefix' => 'reservations'], function () {
     Route::get('/location', [ReservationController::class, 'getAllLocations']);

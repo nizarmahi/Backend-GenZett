@@ -23,9 +23,9 @@ class CreateHistoryReservationUserTable extends Migration
             $table->string('paymentStatus'); // 'DP', 'Lunas', 'canceled', 'waiting'
             $table->string('paymentType');
             $table->string('reservationStatus'); // 'Upcoming', 'Ongoing', 'Completed'
-            $table->decimal('totalAmount', 10, 2);
-            $table->decimal('totalPaid', 10, 2)->default(0);
-            $table->decimal('remainingAmount', 10, 2)->default(0);
+            $table->integer('totalAmount');
+            $table->integer('totalPaid')->default(0);
+            $table->integer('remainingAmount')->default(0);
             $table->date('reservationDate');
             $table->json('details'); // Menyimpan detail reservasi dalam format JSON
             

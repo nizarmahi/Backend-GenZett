@@ -34,9 +34,9 @@ class HistoryReservationUser extends Model
 
     protected $casts = [
         'details' => 'array',
-        'totalAmount' => 'decimal:2',
-        'totalPaid' => 'decimal:2',
-        'remainingAmount' => 'decimal:2',
+        'totalAmount' => 'integer',
+        'totalPaid' => 'integer',
+        'remainingAmount' => 'integer',
         'reservationDate' => 'date'
     ];
 

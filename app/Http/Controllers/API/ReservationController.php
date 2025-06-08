@@ -1089,8 +1089,8 @@ class ReservationController extends Controller
                 $now = now('Asia/Jakarta');
                 $today = $now->format('Y-m-d');
                 $currentTime = $now->format('H:i:s');
-                $reservationDate = $history->reservationDate->format('Y-m-d');
-                $reservationTime = $history->reservationDate->format('H:i:s');
+                $reservationDate = $history->reservationDate;
+                $reservationTime = $history->reservationDate;
                 $reservationStatus = $history->reservationStatus;
                 $endTime = date('H:i:s', strtotime($reservationTime . ' +1 hour'));
                 $totalAmount = number_format($history->totalAmount, 0, ',', '.');
@@ -1232,12 +1232,12 @@ class ReservationController extends Controller
             }
 
             // Cek apakah sudah dalam status canceled atau waiting
-            // if (in_array($historyReservation->paymentStatus, ['canceled', 'waiting'])) {
-            //     return response()->json([
-            //         'success' => false,
-            //         'message' => 'Reservasi sudah dalam proses pembatalan'
-            //     ], 400);
-            // }
+            if (in_array($historyReservation->paymentStatus, ['canceled', 'waiting'])) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Reservasi sudah dalam proses pembatalan'
+                ], 400);
+            }
 
             // Logika pembatalan berdasarkan paymentStatus
             if ($historyReservation->paymentStatus !== 'Lunas' && $historyReservation->reservationStatus !== 'Completed') {
@@ -1511,7 +1511,8 @@ class ReservationController extends Controller
 
             // Update status menjadi refunded
             $historyReservation->update([
-                'paymentStatus' => 'refunded',
+                'paymentStatus' => 'refund',
+                'reservationStatus' => 'refunded',
                 'adminNote' => $request->input('adminNote', 'Refund telah diproses oleh admin'),
                 'refundAmount' => $refundAmount,
                 'processedAt' => now()
@@ -1524,7 +1525,7 @@ class ReservationController extends Controller
             $originalReservation = Reservation::find($historyReservation->reservationId);
             if ($originalReservation) {
                 $originalReservation->update([
-                    'paymentStatus' => 'refunded'
+                    'paymentStatus' => 'refund'
                 ]);
             }
 

@@ -10,6 +10,8 @@ use App\Models\Field;
 use App\Models\Membership;
 use App\Models\Payment;
 use App\Models\Time;
+use App\Models\HistoryReservationUser;
+use App\Models\User;
 use Illuminate\Support\Facades\Validator;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use Illuminate\Support\Facades\DB;
@@ -216,7 +218,7 @@ class ReservationController extends Controller
             'details.*.timeIds.*' => 'required|exists:times,timeId',
             'details.*.date' => 'required|date',
             'name' => 'sometimes|string|max:255',
-            'paymentStatus' => 'sometimes|string|in:pending,paid,cancelled',
+            'paymentStatus' => 'sometimes|string|in:pending,paid,canceled',
             'paymentType' => 'sometimes|string|in:reguler,membership',
             'total' => 'sometimes|numeric|min:0',
         ]);
@@ -838,11 +840,217 @@ class ReservationController extends Controller
         }
     }
 
+    // public function userReservations(Request $request)
+    // {
+    //     try {
+    //         $payload = JWTAuth::parseToken()->getPayload();
+    //         // $payload = JWTAuth::decode($request->header('Authorization'));
+    //         $userId = $payload->get('user_id');
+            
+    //         if (!$userId) {
+    //             return response()->json([
+    //                 'success' => false,
+    //                 'message' => 'Unauthorized Access'
+    //             ], 403);
+    //         }
+
+    //         $reservations = Reservation::with([
+    //             'details.field.location',
+    //             'details.field.sport',
+    //             'details.time',
+    //             'user',
+    //             'payment'
+    //         ])->where('userId', $userId)->get();
+
+    //         $user = $reservations->first()?->user;
+
+    //         $formattedReservations = $reservations->map(function ($reservation) {
+    //             $user = $reservation->user;
+    //             $detail = $reservation->details->first(); // ambil detail pertama untuk data lapangan & waktu
+
+    //             // Waktu & status reservasi
+    //             $now = now('Asia/Jakarta'); // gunakan timezone yang sesuai
+    //             $today = $now->format('Y-m-d');
+    //             $currentTime = $now->format('H:i:s');
+            
+    //             $reservationDate = $detail->date;
+    //             $reservationTime = $detail->time->time;
+
+    //             // Hitung waktu selesai 
+    //             $endTime = date('H:i:s', strtotime($reservationTime . ' +1 hour'));
+
+    //             if ($reservationDate == $today) {
+    //                 if ($currentTime < $reservationTime) {
+    //                     $status = 'Upcoming';
+    //                 } elseif ($currentTime >= $reservationTime && $currentTime < $endTime) {
+    //                     $status = 'Ongoing';
+    //                 } else {
+    //                     $status = 'Completed';
+    //                 }
+    //             } elseif ($reservationDate < $today) {
+    //                 $status = 'Completed';
+    //             } else {
+    //                 $status = 'Upcoming';
+    //             }
+
+    //             $totalAmount = $reservation->details->sum(fn($d) => $d->time->price ?? 0);
+    //             $totalPaid = $reservation->payment->totalPaid ?? 0;
+    //             $remainingAmount = $totalAmount - $totalPaid;
+    //             $courtName = explode(' - ', $detail->field->name ?? '');
+    //             $paymentStatus = $totalPaid > 0 && $totalPaid >= $totalAmount ? 'Lunas' : 'DP ( Rp. ' . $remainingAmount . ' )';
+    //             if ($status == 'Completed') {
+    //                 $paymentStatus = 'Lunas';
+    //             } 
+
+    //             return [
+    //                 "reservationId" => $reservation->reservationId,
+    //                 "bookingName" => $reservation->name,
+    //                 "cabang" => $detail->field->location->locationName ?? null,
+    //                 "lapangan" => $courtName[2] . ' - ' . $courtName[0],
+    //                 "paymentStatus" => $paymentStatus,
+    //                 "paymentType" => $reservation->paymentType,
+    //                 "reservationStatus" => $status,
+    //                 "totalAmount" => $totalAmount,
+    //                 "totalPaid" => $totalPaid,
+    //                 "remainingAmount" => $remainingAmount,
+    //                 "date" => $detail->date ?? null,
+    //                 "details" => $reservation->details->map(function ($d) use ($courtName, $totalAmount, $totalPaid, $remainingAmount ) {
+    //                     return [
+    //                         "locationName" => $d->field->location->locationName ?? null,
+    //                         "sportName" => $d->field->sport->sportName ?? null,
+    //                         "time" => date('H:i', strtotime($d->time->time)) . ' - ' . date('H:i', strtotime($d->time->time . ' +1 hour')),
+    //                         "lapangan" => $d->field->name ?? null,
+    //                         "price" => $d->time->price ?? 0
+    //                     ];
+    //                 }),
+    //                 "created_at" => $reservation->created_at,
+    //                 "updated_at" => $reservation->updated_at
+    //             ];
+    //         });
+
+    //         $data = [
+    //             'UserName' => $user->name ?? null,
+    //             'whatsapp' => 'wa.me/+62' . ltrim($user->phone, '0'),
+    //             'email' => $user->email ?? null,
+    //             'count' => $formattedReservations->count(),
+    //             'reservations' => $formattedReservations
+    //         ];
+
+    //         return response()->json([
+    //             'success' => true,
+    //             'message' => 'Reservasi berhasil diambil',
+    //             'data' => $data
+    //         ]);
+
+    //     } catch (JWTException $e) {
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => 'Token tidak valid atau tidak ditemukan',
+    //             'error' => $e->getMessage(),
+    //         ], 401);
+    //     } catch (\Exception $e) {
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => 'Terjadi kesalahan',
+    //             'error' => $e->getMessage(),
+    //         ], 500);
+    //     }
+    // }
+
+    private function transferToHistory($reservation)
+    {
+        $user = $reservation->user;
+        $detail = $reservation->details->first();
+
+        // Waktu & status reservasi
+        $now = now('Asia/Jakarta');
+        $today = $now->format('Y-m-d');
+        $currentTime = $now->format('H:i:s');
+        
+        $reservationDate = $detail->date;
+        $reservationTime = $detail->time->time;
+
+        // Hitung waktu selesai 
+        $endTime = date('H:i:s', strtotime($reservationTime . ' +1 hour'));
+
+        if ($reservationDate == $today) {
+            if ($currentTime < $reservationTime) {
+                $status = 'Upcoming';
+            } elseif ($currentTime >= $reservationTime && $currentTime < $endTime) {
+                $status = 'Ongoing';
+            } else {
+                $status = 'Completed';
+            }
+        } elseif ($reservationDate < $today) {
+            $status = 'Completed';
+        } else {
+            $status = 'Upcoming';
+        }
+
+        $totalAmount = $reservation->details->sum(fn($d) => $d->time->price ?? 0);
+        $totalPaid = $reservation->payment->totalPaid ?? 0;
+        $remainingAmount = $totalAmount - $totalPaid;
+        $courtName = explode(' - ', $detail->field->name ?? '');
+        
+        $paymentStatus = 'DP';
+        if ($totalPaid > 0 && $totalPaid >= $totalAmount) {
+            $paymentStatus = 'Lunas';
+        } elseif ($status == 'Completed') {
+            $paymentStatus = 'Lunas';
+        }
+
+        $detailsArray = $reservation->details->map(function ($d) {
+            return [
+                "locationName" => $d->field->location->locationName ?? null,
+                "sportName" => $d->field->sport->sportName ?? null,
+                "time" => date('H:i', strtotime($d->time->time)) . ' - ' . date('H:i', strtotime($d->time->time . ' +1 hour')),
+                "lapangan" => $d->field->name ?? null,
+                "price" => $d->time->price ?? 0
+            ];
+        })->toArray();
+
+        return HistoryReservationUser::create([
+            'reservationId' => $reservation->reservationId,
+            'userId' => $reservation->userId,
+            'bookingName' => $reservation->name,
+            'cabang' => $detail->field->location->locationName ?? null,
+            'lapangan' => (count($courtName) >= 3) ? $courtName[2] . ' - ' . $courtName[0] : $detail->field->name,
+            'paymentStatus' => $paymentStatus,
+            'paymentType' => $reservation->paymentType,
+            'reservationStatus' => $status,
+            'totalAmount' => $totalAmount,
+            'totalPaid' => $totalPaid,
+            'remainingAmount' => $remainingAmount,
+            'reservationDate' => $detail->date,
+            'details' => $detailsArray
+        ]);
+    }
+    
     public function userReservations(Request $request)
     {
         try {
-            $payload = JWTAuth::parseToken()->getPayload();
-            $userId = $payload->get('user_id');
+            // $payload = JWTAuth::parseToken()->getPayload();
+            $authHeader = $request->header('Authorization');
+            if (!$authHeader || !str_starts_with($authHeader, 'Bearer ')) {
+                return response()->json(['success' => false, 'message' => 'Authorization header tidak valid'], 401);
+            }
+
+            $token = substr($authHeader, 7); // Ambil string setelah "Bearer "
+            // Pisahkan JWT menjadi bagian-bagian: header.payload.signature
+            $parts = explode('.', $token);
+            if (count($parts) !== 3) {
+                return response()->json(['success' => false, 'message' => 'Format token tidak valid'], 400);
+            }
+
+            // Decode payload dari base64
+            $payload = json_decode(base64_decode(strtr($parts[1], '-_', '+/')), true);
+
+            if (!$payload || !isset($payload['user_id'])) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized Access'], 400);
+            }
+
+            $userId = $payload['user_id'];
+            // $userId = $payload->get('user_id');
             
             if (!$userId) {
                 return response()->json([
@@ -851,6 +1059,7 @@ class ReservationController extends Controller
                 ], 403);
             }
 
+            // Sync data dari reservations ke history_reservation_user jika belum ada
             $reservations = Reservation::with([
                 'details.field.location',
                 'details.field.sport',
@@ -859,75 +1068,82 @@ class ReservationController extends Controller
                 'payment'
             ])->where('userId', $userId)->get();
 
-            $user = $reservations->first()?->user;
+            foreach ($reservations as $reservation) {
+                $existingHistory = HistoryReservationUser::where('reservationId', $reservation->reservationId)->first();
+                
+                if (!$existingHistory) {
+                    $this->transferToHistory($reservation);
+                }
+            }
 
-            $formattedReservations = $reservations->map(function ($reservation) {
-                $user = $reservation->user;
-                $detail = $reservation->details->first(); // ambil detail pertama untuk data lapangan & waktu
+            // Ambil data dari history_reservation_user
+            $historyReservations = HistoryReservationUser::where('userId', $userId)
+                ->orderBy('created_at', 'desc')
+                ->get();
 
-                // Waktu & status reservasi
-                $now = now('Asia/Jakarta'); // gunakan timezone yang sesuai
+            $user = User::find($userId);
+
+            $formattedReservations = $historyReservations->map(function ($history) {
+                $paymentStatusDisplay = $history->paymentStatus;
+
+                $now = now('Asia/Jakarta');
                 $today = $now->format('Y-m-d');
                 $currentTime = $now->format('H:i:s');
-            
-                $reservationDate = $detail->date;
-                $reservationTime = $detail->time->time;
-
-                // Hitung waktu selesai 
+                $reservationDate = $history->reservationDate->format('Y-m-d');
+                $reservationTime = $history->reservationDate->format('H:i:s');
+                $reservationStatus = $history->reservationStatus;
                 $endTime = date('H:i:s', strtotime($reservationTime . ' +1 hour'));
+                $totalAmount = number_format($history->totalAmount, 0, ',', '.');
+                $totalPaid = number_format($history->totalPaid, 0, ',', '.');
+                $remainingAmount = number_format($history->remainingAmount, 0, ',', '.');
 
                 if ($reservationDate == $today) {
                     if ($currentTime < $reservationTime) {
-                        $status = 'Upcoming';
+                        $reservationStatus = 'Upcoming';
                     } elseif ($currentTime >= $reservationTime && $currentTime < $endTime) {
-                        $status = 'Ongoing';
+                        $reservationStatus = 'Ongoing';
                     } else {
-                        $status = 'Completed';
+                        $reservationStatus = 'Completed';
                     }
                 } elseif ($reservationDate < $today) {
-                    $status = 'Completed';
+                    $reservationStatus = 'Completed';
                 } else {
-                    $status = 'Upcoming';
+                    $reservationStatus = 'Upcoming';
                 }
 
-                $totalAmount = $reservation->details->sum(fn($d) => $d->time->price ?? 0);
-                $totalPaid = $reservation->payment->totalPaid ?? 0;
-                $remainingAmount = $totalAmount - $totalPaid;
-                $courtName = explode(' - ', $detail->field->name ?? '');
-                $paymentStatus = $totalPaid > 0 && $totalPaid >= $totalAmount ? 'Lunas' : 'DP ( Rp. ' . $remainingAmount . ' )';
-                if ($status == 'Completed') {
-                    $paymentStatus = 'Lunas';
-                } 
+                if ($history->paymentStatus == 'DP') {
+                    $paymentStatusDisplay = 'DP ( Rp. ' . number_format($history->remainingAmount, 0, ',', '.') . ' )';
+                } elseif ($history->paymentStatus == 'canceled') {
+                    $reservationStatus = 'canceled';                    
+                } elseif ($history->paymentStatus == 'waiting') {
+                    $reservationStatus = 'waiting';
+                }
 
                 return [
-                    "reservationId" => $reservation->reservationId,
-                    "bookingName" => $reservation->name,
-                    "cabang" => $detail->field->location->locationName ?? null,
-                    "lapangan" => $courtName[2] . ' - ' . $courtName[0],
-                    "paymentStatus" => $paymentStatus,
-                    "paymentType" => $reservation->paymentType,
-                    "reservationStatus" => $status,
+                    "historyId" => $history->historyId,
+                    "reservationId" => $history->reservationId,
+                    "bookingName" => $history->bookingName,
+                    "cabang" => $history->cabang,
+                    "lapangan" => $history->lapangan,
+                    "paymentStatus" => $paymentStatusDisplay,
+                    "paymentType" => $history->paymentType,
+                    "reservationStatus" => $reservationStatus,
                     "totalAmount" => $totalAmount,
                     "totalPaid" => $totalPaid,
                     "remainingAmount" => $remainingAmount,
-                    "date" => $detail->date ?? null,
-                    "details" => $reservation->details->map(function ($d) use ($courtName, $totalAmount, $totalPaid, $remainingAmount ) {
-                        return [
-                            "locationName" => $d->field->location->locationName ?? null,
-                            "sportName" => $d->field->sport->sportName ?? null,
-                            "time" => date('H:i', strtotime($d->time->time)) . ' - ' . date('H:i', strtotime($d->time->time . ' +1 hour')),
-                            "lapangan" => $d->field->name ?? null,
-                            "price" => $d->time->price ?? 0
-                        ];
-                    }),
-                    "created_at" => $reservation->created_at,
-                    "updated_at" => $reservation->updated_at
+                    "date" => $reservationDate,
+                    "details" => $history->details,
+                    "bankName" => $history->bankName,
+                    "accountName" => $history->accountName,
+                    "accountNumber" => $history->accountNumber,
+                    "created_at" => $history->created_at,
+                    "updated_at" => $history->updated_at
                 ];
             });
 
             $data = [
                 'UserName' => $user->name ?? null,
-                'whatsapp' => 'wa.me/+62' . ltrim($user->phone, '0'),
+                'whatsapp' => 'wa.me/+62' . ltrim($user->phone ?? '', '0'),
                 'email' => $user->email ?? null,
                 'count' => $formattedReservations->count(),
                 'reservations' => $formattedReservations
@@ -949,6 +1165,531 @@ class ReservationController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Terjadi kesalahan',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Cancel reservasi dari history_reservation_user
+     * 
+     * @bodyParam bankName string optional Nama bank untuk refund (required jika paymentStatus = Lunas). Example: "BCA"
+     * @bodyParam accountName string optional Nama pemilik rekening (required jika paymentStatus = Lunas). Example: "John Doe"
+     * @bodyParam accountNumber string optional Nomor rekening (required jika paymentStatus = Lunas). Example: "1234567890"
+     * @bodyParam cancelReason string optional Alasan pembatalan. Example: "Berhalangan hadir"
+     */
+    public function cancelStatusReservation(Request $request, $id)
+    {
+        try {
+            // $payload = JWTAuth::parseToken()->getPayload();
+            // $userId = $payload->get('user_id');
+            $authHeader = $request->header('Authorization');
+            if (!$authHeader || !str_starts_with($authHeader, 'Bearer ')) {
+                return response()->json(['success' => false, 'message' => 'Authorization header tidak valid'], 401);
+            }
+
+            $token = substr($authHeader, 7); // Ambil string setelah "Bearer "
+            // Pisahkan JWT menjadi bagian-bagian: header.payload.signature
+            $parts = explode('.', $token);
+            if (count($parts) !== 3) {
+                return response()->json(['success' => false, 'message' => 'Format token tidak valid'], 400);
+            }
+
+            // Decode payload dari base64
+            $payload = json_decode(base64_decode(strtr($parts[1], '-_', '+/')), true);
+
+            if (!$payload || !isset($payload['user_id'])) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized Access'], 400);
+            }
+
+            $userId = $payload['user_id'];
+            
+            if (!$userId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized Access'
+                ], 403);
+            }
+
+            // Cari history reservation berdasarkan historyId
+            $historyReservation = HistoryReservationUser::where('historyId', $id)
+                ->where('userId', $userId)
+                ->first();
+
+            if (!$historyReservation) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Reservasi tidak ditemukan'
+                ], 404);
+            }
+
+            // Cek apakah reservasi sudah selesai
+            if ($historyReservation->reservationStatus === 'Completed') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Reservasi yang sudah selesai tidak dapat dibatalkan'
+                ], 400);
+            }
+
+            // Cek apakah sudah dalam status canceled atau waiting
+            // if (in_array($historyReservation->paymentStatus, ['canceled', 'waiting'])) {
+            //     return response()->json([
+            //         'success' => false,
+            //         'message' => 'Reservasi sudah dalam proses pembatalan'
+            //     ], 400);
+            // }
+
+            // Logika pembatalan berdasarkan paymentStatus
+            if ($historyReservation->paymentStatus !== 'Lunas' && $historyReservation->reservationStatus !== 'Completed') {
+                // Case 1: paymentStatus bukan Lunas dan reservationStatus bukan Completed
+                // Langsung rubah paymentStatus menjadi canceled
+                $historyReservation->update([
+                    'paymentStatus' => 'canceled',
+                    'cancelReason' => $request->input('cancelReason', 'Dibatalkan oleh user')
+                ]);
+
+                // Update status times menjadi available
+                $this->updateTimeAvailability($historyReservation->reservationId, 'available');
+
+                $message = 'Reservasi berhasil dibatalkan';
+                
+            } elseif ($historyReservation->paymentStatus === 'Lunas') {
+                // Case 2: paymentStatus === Lunas
+                // Validasi input untuk refund
+                $validator = Validator::make($request->all(), [
+                    'bankName' => 'required|string|max:255',
+                    'accountName' => 'required|string|max:255',
+                    'accountNumber' => 'required|string|max:50',
+                    'cancelReason' => 'sometimes|string|max:500'
+                ]);
+
+                if ($validator->fails()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Data refund tidak lengkap',
+                        'errors' => $validator->errors()
+                    ], 422);
+                }
+                
+                // Update dengan data refund dan status waiting
+                $historyReservation->update([
+                    // Update reservation status di tabel utama juga
+                    'paymentStatus' => 'waiting',
+                    'bankName' => $request->bankName,
+                    'accountName' => $request->accountName,
+                    'accountNumber' => $request->accountNumber,
+                    'cancelReason' => $request->input('cancelReason', 'Dibatalkan oleh user - menunggu refund')
+                ]);
+
+                $message = 'Permintaan pembatalan berhasil dikirim. Refund akan diproses dalam 1-3 hari kerja';
+            }
+
+            // Update reservation status di tabel utama jika perlu
+            $originalReservation = Reservation::find($historyReservation->reservationId);
+            if ($originalReservation) {
+                $originalReservation->update([
+                    'paymentStatus' => $historyReservation->paymentStatus === 'canceled' ? 'canceled' : $originalReservation->paymentStatus,
+                    'reservationStatus' => $historyReservation->paymentStatus === 'canceled' ? 'Waiting' : $originalReservation->reservationStatus
+                ]);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+                'data' => [
+                    'historyId' => $historyReservation->historyId,
+                    'reservationId' => $historyReservation->reservationId,
+                    'paymentStatus' => $historyReservation->paymentStatus,
+                    'bankName' => $historyReservation->bankName,
+                    'accountName' => $historyReservation->accountName,
+                    'accountNumber' => $historyReservation->accountNumber,
+                    'cancelReason' => $historyReservation->cancelReason
+                ]
+            ]);
+
+        } catch (JWTException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Token tidak valid atau tidak ditemukan',
+                'error' => $e->getMessage(),
+            ], 401);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat membatalkan reservasi',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Helper method untuk update status time availability
+     */
+    private function updateTimeAvailability($reservationId, $status)
+    {
+        try {
+            $reservationDetails = ReservationDetail::where('reservationId', $reservationId)->get();
+            
+            foreach ($reservationDetails as $detail) {
+                $time = Time::find($detail->timeId);
+                if ($time) {
+                    $time->status = $status;
+                    $time->save();
+                }
+            }
+        } catch (\Exception $e) {
+            // Log error tapi jangan stop proses
+            \Log::error('Error updating time availability: ' . $e->getMessage());
+        }
+    }
+            
+
+    /**
+     * Tampilkan Semua Permintaan Refund
+     *
+     * Mengambil semua reservasi yang memiliki status waiting (menunggu refund).
+     *
+     * @queryParam page integer optional Halaman yang diminta. Example: 1
+     * @queryParam limit integer optional Jumlah data per halaman. Example: 10
+     * @queryParam search string optional Pencarian berdasarkan nama booking. Example: "Booking 1"
+     * @queryParam locationId integer optional Filter berdasarkan lokasi. Example: 1
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getRefundRequests(Request $request)
+    {
+        try {
+            $page = (int) $request->input('page', 1);
+            $limit = (int) $request->input('limit', 10);
+            $search = $request->input('search');
+            $locationId = $request->input('locationId');
+
+            $query = HistoryReservationUser::with('user')
+                ->where('paymentStatus', 'waiting')
+                ->orWhere('paymentStatus', 'canceled')
+                ->when($search, function ($query) use ($search) {
+                    $query->where('bookingName', 'like', '%' . $search . '%');
+                })
+                ->when($locationId, function ($query) use ($locationId) {
+                    $query->where('cabang', function ($q) use ($locationId) {
+                        $location = DB::table('locations')->where('locationId', $locationId)->first();
+                        if ($location) {
+                            return $q->where('cabang', $location->locationName);
+                        }
+                    });
+                })
+                ->orderBy('created_at', 'desc');
+
+            $refundRequests = $query->paginate($limit, ['*'], 'page', $page);
+
+            $formattedData = $refundRequests->getCollection()->map(function ($history) {
+                return [
+                    'historyId' => $history->historyId,
+                    'reservationId' => $history->reservationId,
+                    'bookingName' => $history->bookingName,
+                    'userName' => $history->user->name ?? 'Unknown',
+                    'userEmail' => $history->user->email ?? '',
+                    'userPhone' => $history->user->phone ?? '',
+                    'cabang' => $history->cabang,
+                    'lapangan' => $history->lapangan,
+                    'reservationDate' => $history->reservationDate->format('Y-m-d'),
+                    'paymentStatus' => $history->paymentStatus,
+                    'reservationStatus' => $history->reservationStatus,
+                    'totalAmount' => $history->totalAmount,
+                    'totalPaid' => $history->totalPaid,
+                    'refundAmount' => $history->totalPaid, // Jumlah yang akan di-refund
+                    'bankName' => $history->bankName,
+                    'accountName' => $history->accountName,
+                    'accountNumber' => $history->accountNumber,
+                    'cancelReason' => $history->cancelReason,
+                    'requestDate' => $history->updated_at->format('Y-m-d H:i:s'),
+                    'details' => $history->details
+                ];
+            });
+
+            \Log::info('locationId: ' . $locationId);
+            \Log::info('search: ' . $search);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Daftar permintaan refund berhasil diambil',
+                'data' => [
+                    'current_page' => $refundRequests->currentPage(),
+                    'data' => $formattedData,
+                    'first_page_url' => $refundRequests->url(1),
+                    'from' => $refundRequests->firstItem(),
+                    'last_page' => $refundRequests->lastPage(),
+                    'last_page_url' => $refundRequests->url($refundRequests->lastPage()),
+                    'next_page_url' => $refundRequests->nextPageUrl(),
+                    'path' => $refundRequests->url($refundRequests->currentPage()),
+                    'per_page' => $refundRequests->perPage(),
+                    'prev_page_url' => $refundRequests->previousPageUrl(),
+                    'to' => $refundRequests->lastItem(),
+                    'total' => $refundRequests->total(),
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat mengambil data permintaan refund',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Konfirmasi Refund oleh Admin
+     *
+     * Admin mengonfirmasi bahwa refund sudah diproses dan mengubah status menjadi refunded.
+     *
+     * @urlParam historyId integer required ID dari history reservation. Example: 1
+     * @bodyParam adminNote string optional Catatan admin tentang proses refund. Example: "Refund telah diproses ke rekening BCA"
+     * @bodyParam refundAmount numeric optional Jumlah yang di-refund (default: totalPaid). Example: 150000
+     *
+     * @response {
+     *   "success": true,
+     *   "message": "Refund berhasil dikonfirmasi",
+     *   "data": {
+     *     "historyId": 1,
+     *     "reservationId": 1,
+     *     "bookingName": "Booking 1",
+     *     "paymentStatus": "refunded",
+     *     "refundAmount": 150000,
+     *     "adminNote": "Refund telah diproses ke rekening BCA",
+     *     "processedAt": "2025-06-08 15:30:00"
+     *   }
+     * }
+     *
+     * @response 404 {
+     *   "success": false,
+     *   "message": "Permintaan refund tidak ditemukan"
+     * }
+     *
+     * @response 400 {
+     *   "success": false,
+     *   "message": "Permintaan refund tidak dalam status waiting"
+     * }
+     */
+    public function confirmRefund(Request $request, $historyId)
+    {
+        try {
+            // Validasi input
+            $validator = Validator::make($request->all(), [
+                'adminNote' => 'sometimes|string|max:500',
+                'refundAmount' => 'sometimes|numeric|min:0'
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Data tidak valid',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            // Cari history reservation
+            $historyReservation = HistoryReservationUser::find($historyId);
+
+            if (!$historyReservation) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Permintaan refund tidak ditemukan'
+                ], 404);
+            }
+
+            // Cek apakah dalam status waiting
+            if ($historyReservation->paymentStatus !== 'waiting') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Permintaan refund tidak dalam status waiting'
+                ], 400);
+            }
+
+            // Tentukan jumlah refund
+            $refundAmount = $request->input('refundAmount', $historyReservation->totalPaid);
+
+            // Update status menjadi refunded
+            $historyReservation->update([
+                'paymentStatus' => 'refunded',
+                'adminNote' => $request->input('adminNote', 'Refund telah diproses oleh admin'),
+                'refundAmount' => $refundAmount,
+                'processedAt' => now()
+            ]);
+
+            // Update status time menjadi available
+            $this->updateTimeAvailability($historyReservation->reservationId, 'available');
+
+            // Update reservation status di tabel utama
+            $originalReservation = Reservation::find($historyReservation->reservationId);
+            if ($originalReservation) {
+                $originalReservation->update([
+                    'paymentStatus' => 'refunded'
+                ]);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Refund berhasil dikonfirmasi',
+                'data' => [
+                    'historyId' => $historyReservation->historyId,
+                    'reservationId' => $historyReservation->reservationId,
+                    'bookingName' => $historyReservation->bookingName,
+                    'userName' => $historyReservation->user->name ?? 'Unknown',
+                    'paymentStatus' => $historyReservation->paymentStatus,
+                    'refundAmount' => $refundAmount,
+                    'bankName' => $historyReservation->bankName,
+                    'accountName' => $historyReservation->accountName,
+                    'accountNumber' => $historyReservation->accountNumber,
+                    'adminNote' => $historyReservation->adminNote,
+                    'processedAt' => $historyReservation->processedAt->format('Y-m-d H:i:s')
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat mengonfirmasi refund',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Tolak Permintaan Refund
+     *
+     * Admin menolak permintaan refund dengan alasan tertentu.
+     *
+     * @urlParam historyId integer required ID dari history reservation. Example: 1
+     * @bodyParam rejectReason string required Alasan penolakan refund. Example: "Tidak memenuhi syarat refund"
+     *
+     * @response {
+     *   "success": true,
+     *   "message": "Permintaan refund berhasil ditolak",
+     *   "data": {
+     *     "historyId": 1,
+     *     "reservationId": 1,
+     *     "paymentStatus": "rejected",
+     *     "rejectReason": "Tidak memenuhi syarat refund"
+     *   }
+     * }
+     */
+    public function rejectRefund(Request $request, $historyId)
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'rejectReason' => 'required|string|max:500'
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Alasan penolakan harus diisi',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            $historyReservation = HistoryReservationUser::find($historyId);
+
+            if (!$historyReservation) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Permintaan refund tidak ditemukan'
+                ], 404);
+            }
+
+            if ($historyReservation->paymentStatus !== 'waiting') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Permintaan refund tidak dalam status waiting'
+                ], 400);
+            }
+
+            // Update status menjadi rejected
+            $historyReservation->update([
+                'paymentStatus' => 'rejected',
+                'rejectReason' => $request->rejectReason,
+                'processedAt' => now()
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Permintaan refund berhasil ditolak',
+                'data' => [
+                    'historyId' => $historyReservation->historyId,
+                    'reservationId' => $historyReservation->reservationId,
+                    'bookingName' => $historyReservation->bookingName,
+                    'paymentStatus' => $historyReservation->paymentStatus,
+                    'rejectReason' => $historyReservation->rejectReason,
+                    'processedAt' => $historyReservation->processedAt->format('Y-m-d H:i:s')
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat menolak refund',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Detail Permintaan Refund
+     *
+     * Mengambil detail lengkap permintaan refund berdasarkan historyId.
+     *
+     * @urlParam historyId integer required ID dari history reservation. Example: 1
+     */
+    public function getRefundDetail($historyId)
+    {
+        try {
+            $historyReservation = HistoryReservationUser::with('user')->find($historyId);
+
+            if (!$historyReservation) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Permintaan refund tidak ditemukan'
+                ], 404);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Detail permintaan refund berhasil diambil',
+                'data' => [
+                    'historyId' => $historyReservation->historyId,
+                    'reservationId' => $historyReservation->reservationId,
+                    'bookingName' => $historyReservation->bookingName,
+                    'user' => [
+                        'name' => $historyReservation->user->name ?? 'Unknown',
+                        'email' => $historyReservation->user->email ?? '',
+                        'phone' => $historyReservation->user->phone ?? '',
+                    ],
+                    'cabang' => $historyReservation->cabang,
+                    'lapangan' => $historyReservation->lapangan,
+                    'reservationDate' => $historyReservation->reservationDate->format('Y-m-d'),
+                    'paymentStatus' => $historyReservation->paymentStatus,
+                    'totalAmount' => $historyReservation->totalAmount,
+                    'totalPaid' => $historyReservation->totalPaid,
+                    'refundAmount' => $historyReservation->refundAmount ?? $historyReservation->totalPaid,
+                    'bankInfo' => [
+                        'bankName' => $historyReservation->bankName,
+                        'accountName' => $historyReservation->accountName,
+                        'accountNumber' => $historyReservation->accountNumber,
+                    ],
+                    'cancelReason' => $historyReservation->cancelReason,
+                    'adminNote' => $historyReservation->adminNote,
+                    'rejectReason' => $historyReservation->rejectReason,
+                    'requestDate' => $historyReservation->updated_at->format('Y-m-d H:i:s'),
+                    'processedAt' => $historyReservation->processedAt?->format('Y-m-d H:i:s'),
+                    'details' => $historyReservation->details
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat mengambil detail refund',
                 'error' => $e->getMessage(),
             ], 500);
         }

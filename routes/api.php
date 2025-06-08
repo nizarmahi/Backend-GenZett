@@ -91,6 +91,7 @@ Route::group(['prefix' => 'fields'], function () {
     Route::get('/availableTimes/{fieldId}', [FieldController::class, 'getAvailableTimes']);
     Route::get('/getPrice/{id}', [FieldController::class, 'getPrice']);
 });
+
 Route::group(['prefix' => 'reservations'], function () {
     Route::get('/location', [ReservationController::class, 'getAllLocations']);
     Route::get('/sport', [ReservationController::class, 'getSports']);
@@ -102,13 +103,19 @@ Route::group(['prefix' => 'reservations'], function () {
 
     Route::get('/', [ReservationController::class, 'index']);
     Route::post('/', [ReservationController::class, 'store']);
+
     Route::get('/user', [ReservationController::class, 'userReservations']);
+    Route::post('/user/{historyId}/cancel', [ReservationController::class, 'cancelStatusReservation']);
+
+    Route::get('/user/refunds', [ReservationController::class, 'getRefundRequests']);
+    Route::get('/user/refunds/{historyId}', [ReservationController::class, 'getRefundDetail']);
+    Route::post('/user/refunds/{historyId}/confirm', [ReservationController::class, 'confirmRefund']);
+    Route::post('/user/refunds/{historyId}/reject', [ReservationController::class, 'rejectRefund']);
+
     Route::get('/{id}', [ReservationController::class, 'show']);
     Route::put('/{id}', [ReservationController::class, 'update']);
     Route::put('/{id}/status', [ReservationController::class, 'updatePaymentStatus']);
     Route::post('/{id}/pay', [ReservationController::class, 'confirmPayment']);
-
-    // Route::get('/user/{userId}/detail', [ReservationController::class, '']);
 });
 
 // Payment API routes

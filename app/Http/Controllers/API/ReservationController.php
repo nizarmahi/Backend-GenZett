@@ -1503,7 +1503,7 @@ class ReservationController extends Controller
             // Validasi input
             $validator = Validator::make($request->all(), [
                 'adminNote' => 'sometimes|string|max:500',
-                'refundAmount' => 'sometimes|numeric|min:0'
+                'refundAmount' => 'nullable|numeric|min:0'
             ]);
 
             if ($validator->fails()) {
@@ -1525,6 +1525,14 @@ class ReservationController extends Controller
             }
 
             // Cek status pembayaran
+
+            if ($historyReservation->paymentStatus === 'refund') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Permintaan refund sudah dikonfirmasi'
+                ], 400);
+            }
+
             if ($historyReservation->paymentStatus !== 'waiting') {
                 return response()->json([
                     'success' => false,
@@ -1532,8 +1540,23 @@ class ReservationController extends Controller
                 ], 400);
             }
 
+            // Tambahkan di sini:
+            if ($request->filled('refundAmount')) {
+                $refundAmount = $request->input('refundAmount');
+
+                if ($refundAmount > $historyReservation->totalPaid) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Jumlah refund tidak boleh lebih besar dari total yang dibayarkan (' . $historyReservation->totalPaid . ')'
+                    ], 422);
+                }
+            }
+
             // Ambil refund amount dari input (atau pakai nilai default)
-            $refundAmount = $request->input('refundAmount', $historyReservation->refundAmount);
+            // $refundAmount = $request->input('refundAmount', $historyReservation->refundAmount);
+            $refundAmount = $request->filled('refundAmount')
+            ? $request->input('refundAmount')
+            : $historyReservation->totalPaid;
 
             // Update data history
             $historyReservation->paymentStatus = 'refund';

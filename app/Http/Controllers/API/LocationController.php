@@ -11,6 +11,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Storage;
+use App\Helpers\AzureBlobHelper;
+
 
 class LocationController extends Controller
 {
@@ -86,38 +88,55 @@ class LocationController extends Controller
      * @param Request $request
      * @return \Illuminate\Http\JsonResponse
      */
+
+
     public function store(Request $request)
-    {
-        $validator = Validator::make($request->all(), [
-            'locationName' => 'required|string|max:255|unique:locations,locationName',
-            'locationPath' => 'required|image|mimes:jpeg,png,jpg,svg|max:2048',
-            'address' => 'required|string',
-            'description' => 'required|string',
-        ]);
+{
+    $validator = Validator::make($request->all(), [
+        'locationName' => 'required|string|max:255|unique:locations,locationName',
+        'locationPath' => 'required|image|mimes:jpeg,png,jpg,svg|max:2048',
+        'address' => 'required|string',
+        'description' => 'required|string',
+    ]);
 
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Validation error',
-                'errors' => $validator->errors()
-            ], 422);
-        }
-
-        $path = $request->file('locationPath')->store('locations', 'public');
-
-        $location = Location::create([
-            'locationName' => $request->locationName,
-            'description' => $request->description,
-            'address' => $request->address,
-            'locationPath' => $path,
-        ]);
-
+    if ($validator->fails()) {
         return response()->json([
-            'success' => true,
-            'message' => 'Location created successfully',
-            'location' => $location
-        ], 201);
+            'success' => false,
+            'message' => 'Validation error',
+            'errors' => $validator->errors()
+        ], 422);
     }
+
+    $file = $request->file('locationPath');
+    $filename = time().'_'.$file->getClientOriginalName();
+    $path = $filename;
+
+    // Upload ke Azure Blob Storage via writeStream
+    $stream = fopen($file->getRealPath(), 'r');
+    Storage::disk('azure')->writeStream($path, $stream);
+    if (is_resource($stream)) {
+        fclose($stream);
+    }
+
+    $location = Location::create([
+        'locationName' => $request->locationName,
+        'description' => $request->description,
+        'address' => $request->address,
+        'locationPath' => $path,
+    ]);
+
+    // Bangun URL publik langsung tanpa SAS
+    $storageAccount = env('AZURE_STORAGE_NAME'); // dari .env
+    $containerName = env('AZURE_STORAGE_CONTAINER'); // misal 'locations'
+    $fileUrl = "https://{$storageAccount}.blob.core.windows.net/{$containerName}/{$path}";
+
+    return response()->json([
+        'success' => true,
+        'message' => 'Location created successfully',
+        'location' => $location,
+        'file_url' => $fileUrl,
+    ], 201);
+}
 
     /**
      * Detail Lokasi

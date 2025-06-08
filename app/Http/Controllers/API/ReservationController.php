@@ -1117,6 +1117,9 @@ class ReservationController extends Controller
                     $reservationStatus = 'canceled';                    
                 } elseif ($history->paymentStatus == 'waiting') {
                     $reservationStatus = 'waiting';
+                } elseif ($history->paymentStatus == 'refund') {
+                    // $paymentStatusDisplay = 'Refund ( Rp. ' . number_format($history->remainingAmount, 0, ',', '.') . ' )';
+                    $reservationStatus = 'Refund ( Rp. ' . number_format($history->refundAmount, 0, ',', '.') . ' )';
                 }
 
                 return [
@@ -1237,7 +1240,13 @@ class ReservationController extends Controller
                     'success' => false,
                     'message' => 'Reservasi sudah dalam proses pembatalan'
                 ], 400);
+            } else if (in_array($historyReservation->paymentStatus, ['refund'])) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Refund sudah dilakukan'
+                ], 400);
             }
+
 
             // Logika pembatalan berdasarkan paymentStatus
             if ($historyReservation->paymentStatus !== 'Lunas' && $historyReservation->reservationStatus !== 'Completed') {
@@ -1245,6 +1254,8 @@ class ReservationController extends Controller
                 // Langsung rubah paymentStatus menjadi canceled
                 $historyReservation->update([
                     'paymentStatus' => 'canceled',
+                    'reservationStatus' => 'canceled',
+                    'remainingAmount' => 0,                  
                     'cancelReason' => $request->input('cancelReason', 'Dibatalkan oleh user')
                 ]);
 
@@ -1303,7 +1314,7 @@ class ReservationController extends Controller
                     'bankName' => $historyReservation->bankName,
                     'accountName' => $historyReservation->accountName,
                     'accountNumber' => $historyReservation->accountNumber,
-                    'cancelReason' => $historyReservation->cancelReason
+                    'cancelReason' => $historyReservation->cancelReason,
                 ]
             ]);
 
@@ -1367,6 +1378,7 @@ class ReservationController extends Controller
             $query = HistoryReservationUser::with('user')
                 ->where('paymentStatus', 'waiting')
                 ->orWhere('paymentStatus', 'canceled')
+                ->orWhere('paymentStatus', 'refund')
                 ->when($search, function ($query) use ($search) {
                     $query->where('bookingName', 'like', '%' . $search . '%');
                 })
@@ -1383,13 +1395,24 @@ class ReservationController extends Controller
             $refundRequests = $query->paginate($limit, ['*'], 'page', $page);
 
             $formattedData = $refundRequests->getCollection()->map(function ($history) {
+                
+                // Hitung refund amount
+                $calculatedRefundAmount = $history->reservationStatus === 'canceled' ?0 : $history->totalAmount || 0 - $history->totalPaid || 0;
+                if ($history->refundAmount !== null) {
+                    $calculatedRefundAmount = $history->refundAmount;
+                }
+
+                // Update refundAmount di database
+                $history->refundAmount = $calculatedRefundAmount;
+                $history->save(); // simpan perubahan ke database
+              
                 return [
                     'historyId' => $history->historyId,
                     'reservationId' => $history->reservationId,
                     'bookingName' => $history->bookingName,
                     'userName' => $history->user->name ?? 'Unknown',
                     'userEmail' => $history->user->email ?? '',
-                    'userPhone' => $history->user->phone ?? '',
+                    'userPhone' => 'wa.me/+62' . ltrim($history->user->phone ?? '', '0'),
                     'cabang' => $history->cabang,
                     'lapangan' => $history->lapangan,
                     'reservationDate' => $history->reservationDate->format('Y-m-d'),
@@ -1397,7 +1420,7 @@ class ReservationController extends Controller
                     'reservationStatus' => $history->reservationStatus,
                     'totalAmount' => $history->totalAmount,
                     'totalPaid' => $history->totalPaid,
-                    'refundAmount' => $history->totalPaid, // Jumlah yang akan di-refund
+                    'refundAmount' => $calculatedRefundAmount , // Jumlah yang akan di-refund
                     'bankName' => $history->bankName,
                     'accountName' => $history->accountName,
                     'accountNumber' => $history->accountNumber,
@@ -1409,6 +1432,8 @@ class ReservationController extends Controller
 
             \Log::info('locationId: ' . $locationId);
             \Log::info('search: ' . $search);
+
+            
 
             return response()->json([
                 'success' => true,
@@ -1471,6 +1496,7 @@ class ReservationController extends Controller
      *   "message": "Permintaan refund tidak dalam status waiting"
      * }
      */
+    
     public function confirmRefund(Request $request, $historyId)
     {
         try {
@@ -1488,8 +1514,8 @@ class ReservationController extends Controller
                 ], 422);
             }
 
-            // Cari history reservation
-            $historyReservation = HistoryReservationUser::find($historyId);
+            // Ambil history dan relasi user (hindari null saat akses user)
+            $historyReservation = HistoryReservationUser::with('user')->find($historyId);
 
             if (!$historyReservation) {
                 return response()->json([
@@ -1498,7 +1524,7 @@ class ReservationController extends Controller
                 ], 404);
             }
 
-            // Cek apakah dalam status waiting
+            // Cek status pembayaran
             if ($historyReservation->paymentStatus !== 'waiting') {
                 return response()->json([
                     'success' => false,
@@ -1506,27 +1532,25 @@ class ReservationController extends Controller
                 ], 400);
             }
 
-            // Tentukan jumlah refund
-            $refundAmount = $request->input('refundAmount', $historyReservation->totalPaid);
+            // Ambil refund amount dari input (atau pakai nilai default)
+            $refundAmount = $request->input('refundAmount', $historyReservation->refundAmount);
 
-            // Update status menjadi refunded
-            $historyReservation->update([
-                'paymentStatus' => 'refund',
-                'reservationStatus' => 'refunded',
-                'adminNote' => $request->input('adminNote', 'Refund telah diproses oleh admin'),
-                'refundAmount' => $refundAmount,
-                'processedAt' => now()
-            ]);
+            // Update data history
+            $historyReservation->paymentStatus = 'refund';
+            $historyReservation->reservationStatus = 'refund';
+            $historyReservation->adminNote = $request->input('adminNote', 'Refund telah diproses oleh admin');
+            $historyReservation->refundAmount = $refundAmount;
+            $historyReservation->processedAt = now();
+            $historyReservation->save();
 
-            // Update status time menjadi available
+            // Update time slot availability
             $this->updateTimeAvailability($historyReservation->reservationId, 'available');
 
-            // Update reservation status di tabel utama
+            // Update status di tabel Reservation
             $originalReservation = Reservation::find($historyReservation->reservationId);
             if ($originalReservation) {
-                $originalReservation->update([
-                    'paymentStatus' => 'refund'
-                ]);
+                $originalReservation->paymentStatus = 'refund';
+                $originalReservation->save();
             }
 
             return response()->json([
@@ -1543,11 +1567,12 @@ class ReservationController extends Controller
                     'accountName' => $historyReservation->accountName,
                     'accountNumber' => $historyReservation->accountNumber,
                     'adminNote' => $historyReservation->adminNote,
-                    'processedAt' => $historyReservation->processedAt->format('Y-m-d H:i:s')
+                    'processedAt' => optional($historyReservation->processedAt)->format('Y-m-d H:i:s')
                 ]
             ]);
 
         } catch (\Exception $e) {
+            \Log::error('Error saat konfirmasi refund: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Terjadi kesalahan saat mengonfirmasi refund',

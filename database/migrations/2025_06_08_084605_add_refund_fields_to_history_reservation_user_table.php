@@ -19,7 +19,7 @@ class AddRefundFieldsToHistoryReservationUserTable extends Migration
             $table->text('rejectReason')->nullable()->after('adminNote');
             
             // Kolom untuk jumlah refund dan waktu proses
-            $table->decimal('refundAmount', 10, 2)->nullable()->after('rejectReason');
+            $table->integer('refundAmount')->default(0)->nullable()->after('rejectReason');
             $table->timestamp('processedAt')->nullable()->after('refundAmount');
         });
     }

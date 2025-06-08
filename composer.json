@@ -12,6 +12,8 @@
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^2.10.1",
         "laravel/ui": "^4.6",
+        "league/flysystem-azure-blob-storage": "^3.28",
+        "microsoft/azure-storage-blob": "^1.5",
         "tymon/jwt-auth": "^2.2",
         "xendit/xendit-php": "^6.4"
     },

@@ -12,7 +12,7 @@ class ReservationSeeder extends Seeder
     {
         $reservations = [];
         $type = ['reguler', 'membership'];
-        $statusReservation = ['pending', 'dp', 'complete', 'fail', 'closed'];
+        $statusReservation = ['pending', 'dp', 'complete', 'fail', 'closed', 'canceled'];
         $name = [
             'Regular Match', 'Tournament', 'Training Session', 'Friendly Game',
             'League Match', 'Championship', 'Practice', 'Tryout',

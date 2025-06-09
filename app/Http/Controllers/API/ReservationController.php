@@ -849,143 +849,27 @@ class ReservationController extends Controller
         }
     }
 
-    // public function userReservations(Request $request)
-    // {
-    //     try {
-    //         $payload = JWTAuth::parseToken()->getPayload();
-    //         // $payload = JWTAuth::decode($request->header('Authorization'));
-    //         $userId = $payload->get('user_id');
-            
-    //         if (!$userId) {
-    //             return response()->json([
-    //                 'success' => false,
-    //                 'message' => 'Unauthorized Access'
-    //             ], 403);
-    //         }
-
-    //         $reservations = Reservation::with([
-    //             'details.field.location',
-    //             'details.field.sport',
-    //             'details.time',
-    //             'user',
-    //             'payment'
-    //         ])->where('userId', $userId)->get();
-
-    //         $user = $reservations->first()?->user;
-
-    //         $formattedReservations = $reservations->map(function ($reservation) {
-    //             $user = $reservation->user;
-    //             $detail = $reservation->details->first(); // ambil detail pertama untuk data lapangan & waktu
-
-    //             // Waktu & status reservasi
-    //             $now = now('Asia/Jakarta'); // gunakan timezone yang sesuai
-    //             $today = $now->format('Y-m-d');
-    //             $currentTime = $now->format('H:i:s');
-            
-    //             $reservationDate = $detail->date;
-    //             $reservationTime = $detail->time->time;
-
-    //             // Hitung waktu selesai 
-    //             $endTime = date('H:i:s', strtotime($reservationTime . ' +1 hour'));
-
-    //             if ($reservationDate == $today) {
-    //                 if ($currentTime < $reservationTime) {
-    //                     $status = 'Upcoming';
-    //                 } elseif ($currentTime >= $reservationTime && $currentTime < $endTime) {
-    //                     $status = 'Ongoing';
-    //                 } else {
-    //                     $status = 'Completed';
-    //                 }
-    //             } elseif ($reservationDate < $today) {
-    //                 $status = 'Completed';
-    //             } else {
-    //                 $status = 'Upcoming';
-    //             }
-
-    //             $totalAmount = $reservation->details->sum(fn($d) => $d->time->price ?? 0);
-    //             $totalPaid = $reservation->payment->totalPaid ?? 0;
-    //             $remainingAmount = $totalAmount - $totalPaid;
-    //             $courtName = explode(' - ', $detail->field->name ?? '');
-    //             $paymentStatus = $totalPaid > 0 && $totalPaid >= $totalAmount ? 'Lunas' : 'DP ( Rp. ' . $remainingAmount . ' )';
-    //             if ($status == 'Completed') {
-    //                 $paymentStatus = 'Lunas';
-    //             } 
-
-    //             return [
-    //                 "reservationId" => $reservation->reservationId,
-    //                 "bookingName" => $reservation->name,
-    //                 "cabang" => $detail->field->location->locationName ?? null,
-    //                 "lapangan" => $courtName[2] . ' - ' . $courtName[0],
-    //                 "paymentStatus" => $paymentStatus,
-    //                 "paymentType" => $reservation->paymentType,
-    //                 "reservationStatus" => $status,
-    //                 "totalAmount" => $totalAmount,
-    //                 "totalPaid" => $totalPaid,
-    //                 "remainingAmount" => $remainingAmount,
-    //                 "date" => $detail->date ?? null,
-    //                 "details" => $reservation->details->map(function ($d) use ($courtName, $totalAmount, $totalPaid, $remainingAmount ) {
-    //                     return [
-    //                         "locationName" => $d->field->location->locationName ?? null,
-    //                         "sportName" => $d->field->sport->sportName ?? null,
-    //                         "time" => date('H:i', strtotime($d->time->time)) . ' - ' . date('H:i', strtotime($d->time->time . ' +1 hour')),
-    //                         "lapangan" => $d->field->name ?? null,
-    //                         "price" => $d->time->price ?? 0
-    //                     ];
-    //                 }),
-    //                 "created_at" => $reservation->created_at,
-    //                 "updated_at" => $reservation->updated_at
-    //             ];
-    //         });
-
-    //         $data = [
-    //             'UserName' => $user->name ?? null,
-    //             'whatsapp' => 'wa.me/+62' . ltrim($user->phone, '0'),
-    //             'email' => $user->email ?? null,
-    //             'count' => $formattedReservations->count(),
-    //             'reservations' => $formattedReservations
-    //         ];
-
-    //         return response()->json([
-    //             'success' => true,
-    //             'message' => 'Reservasi berhasil diambil',
-    //             'data' => $data
-    //         ]);
-
-    //     } catch (JWTException $e) {
-    //         return response()->json([
-    //             'success' => false,
-    //             'message' => 'Token tidak valid atau tidak ditemukan',
-    //             'error' => $e->getMessage(),
-    //         ], 401);
-    //     } catch (\Exception $e) {
-    //         return response()->json([
-    //             'success' => false,
-    //             'message' => 'Terjadi kesalahan',
-    //             'error' => $e->getMessage(),
-    //         ], 500);
-    //     }
-    // }
-
     private function transferToHistory($reservation)
     {
         $user = $reservation->user;
         $detail = $reservation->details->first();
 
-        // Waktu & status reservasi
         $now = now('Asia/Jakarta');
         $today = $now->format('Y-m-d');
         $currentTime = $now->format('H:i:s');
-        
-        $reservationDate = $detail->date;
-        $reservationTime = $detail->time->time;
 
-        // Hitung waktu selesai 
-        $endTime = date('H:i:s', strtotime($reservationTime . ' +1 hour'));
+        // Ambil semua slot waktu
+        $sortedTimes = $reservation->details->sortBy('time.time');
+        $startTime = $sortedTimes->first()->time->time;
+        $lastTime = $sortedTimes->last()->time->time;
+        $endTime = date('H:i:s', strtotime($lastTime . ' +1 hour'));
+
+        $reservationDate = $detail->date;
 
         if ($reservationDate == $today) {
-            if ($currentTime < $reservationTime) {
+            if ($currentTime < $startTime) {
                 $status = 'Upcoming';
-            } elseif ($currentTime >= $reservationTime && $currentTime < $endTime) {
+            } elseif ($currentTime >= $startTime && $currentTime < $endTime) {
                 $status = 'Ongoing';
             } else {
                 $status = 'Completed';
@@ -1000,11 +884,9 @@ class ReservationController extends Controller
         $totalPaid = $reservation->payment->totalPaid ?? 0;
         $remainingAmount = $totalAmount - $totalPaid;
         $courtName = explode(' - ', $detail->field->name ?? '');
-        
+
         $paymentStatus = 'DP';
-        if ($totalPaid > 0 && $totalPaid >= $totalAmount) {
-            $paymentStatus = 'Lunas';
-        } elseif ($status == 'Completed') {
+        if ($totalPaid >= $totalAmount || $status == 'Completed') {
             $paymentStatus = 'Lunas';
         }
 
@@ -1034,41 +916,32 @@ class ReservationController extends Controller
             'details' => $detailsArray
         ]);
     }
-    
+
     public function userReservations(Request $request)
     {
         try {
-            // $payload = JWTAuth::parseToken()->getPayload();
             $authHeader = $request->header('Authorization');
             if (!$authHeader || !str_starts_with($authHeader, 'Bearer ')) {
                 return response()->json(['success' => false, 'message' => 'Authorization header tidak valid'], 401);
             }
 
-            $token = substr($authHeader, 7); // Ambil string setelah "Bearer "
-            // Pisahkan JWT menjadi bagian-bagian: header.payload.signature
+            $token = substr($authHeader, 7);
             $parts = explode('.', $token);
             if (count($parts) !== 3) {
                 return response()->json(['success' => false, 'message' => 'Format token tidak valid'], 400);
             }
 
-            // Decode payload dari base64
             $payload = json_decode(base64_decode(strtr($parts[1], '-_', '+/')), true);
-
             if (!$payload || !isset($payload['user_id'])) {
                 return response()->json(['success' => false, 'message' => 'Unauthorized Access'], 400);
             }
 
             $userId = $payload['user_id'];
-            // $userId = $payload->get('user_id');
-            
             if (!$userId) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Unauthorized Access'
-                ], 403);
+                return response()->json(['success' => false, 'message' => 'Unauthorized Access'], 403);
             }
 
-            // Sync data dari reservations ke history_reservation_user jika belum ada
+            // Sync data dari reservations ke history
             $reservations = Reservation::with([
                 'details.field.location',
                 'details.field.sport',
@@ -1079,37 +952,42 @@ class ReservationController extends Controller
 
             foreach ($reservations as $reservation) {
                 $existingHistory = HistoryReservationUser::where('reservationId', $reservation->reservationId)->first();
-                
                 if (!$existingHistory) {
                     $this->transferToHistory($reservation);
                 }
             }
 
-            // Ambil data dari history_reservation_user
             $historyReservations = HistoryReservationUser::where('userId', $userId)
                 ->orderBy('created_at', 'desc')
                 ->get();
 
             $user = User::find($userId);
 
-            $formattedReservations = $historyReservations->map(function ($history) {
-                $paymentStatusDisplay = $history->paymentStatus;
-
+            $formattedReservations = $historyReservations->map(function ($history) use ($reservations) {
                 $now = now('Asia/Jakarta');
                 $today = $now->format('Y-m-d');
                 $currentTime = $now->format('H:i:s');
-                $reservationDate = $history->reservationDate;
-                $reservationTime = $history->reservationDate;
-                $reservationStatus = $history->reservationStatus;
-                $endTime = date('H:i:s', strtotime($reservationTime . ' +1 hour'));
-                $totalAmount = number_format($history->totalAmount, 0, ',', '.');
-                $totalPaid = number_format($history->totalPaid, 0, ',', '.');
-                $remainingAmount = number_format($history->remainingAmount, 0, ',', '.');
 
+                $reservationDate = $history->reservationDate;
+                $reservationStatus = $history->reservationStatus;
+                $paymentStatusDisplay = $history->paymentStatus;
+
+                $startTime = '00:00:00';
+                $endTime = '00:00:00';
+
+                $matchingReservation = $reservations->firstWhere('reservationId', $history->reservationId);
+                if ($matchingReservation && $matchingReservation->details->isNotEmpty()) {
+                    $sortedTimes = $matchingReservation->details->sortBy('time.time');
+                    $startTime = $sortedTimes->first()->time->time;
+                    $lastTime = $sortedTimes->last()->time->time;
+                    $endTime = date('H:i:s', strtotime($lastTime . ' +1 hour'));
+                }
+
+                // Perhitungan status berdasarkan waktu
                 if ($reservationDate == $today) {
-                    if ($currentTime < $reservationTime) {
+                    if ($currentTime < $startTime) {
                         $reservationStatus = 'Upcoming';
-                    } elseif ($currentTime >= $reservationTime && $currentTime < $endTime) {
+                    } elseif ($currentTime >= $startTime && $currentTime < $endTime) {
                         $reservationStatus = 'Ongoing';
                     } else {
                         $reservationStatus = 'Completed';
@@ -1120,15 +998,18 @@ class ReservationController extends Controller
                     $reservationStatus = 'Upcoming';
                 }
 
-                if ($history->paymentStatus == 'DP') {
-                    $paymentStatusDisplay = 'DP ( Rp. ' . number_format($history->remainingAmount, 0, ',', '.') . ' )';
-                } elseif ($history->paymentStatus == 'canceled') {
-                    $reservationStatus = 'canceled';                    
-                } elseif ($history->paymentStatus == 'waiting') {
+                // Override kondisi khusus
+                if ($history->paymentStatus === 'canceled') {
+                    $reservationStatus = 'canceled';
+                } elseif ($history->paymentStatus === 'waiting') {
                     $reservationStatus = 'waiting';
-                } elseif ($history->paymentStatus == 'refund') {
-                    // $paymentStatusDisplay = 'Refund ( Rp. ' . number_format($history->remainingAmount, 0, ',', '.') . ' )';
+                } elseif ($history->paymentStatus === 'refund') {
                     $reservationStatus = 'Refund ( Rp. ' . number_format($history->refundAmount, 0, ',', '.') . ' )';
+                }
+
+                // Format payment status tampilannya
+                if ($history->paymentStatus === 'DP') {
+                    $paymentStatusDisplay = 'DP ( Rp. ' . number_format($history->remainingAmount, 0, ',', '.') . ' )';
                 }
 
                 return [
@@ -1140,10 +1021,12 @@ class ReservationController extends Controller
                     "paymentStatus" => $paymentStatusDisplay,
                     "paymentType" => $history->paymentType,
                     "reservationStatus" => $reservationStatus,
-                    "totalAmount" => $totalAmount,
-                    "totalPaid" => $totalPaid,
-                    "remainingAmount" => $remainingAmount,
+                    "totalAmount" => number_format($history->totalAmount, 0, ',', '.'),
+                    "totalPaid" => number_format($history->totalPaid, 0, ',', '.'),
+                    "remainingAmount" => number_format($history->remainingAmount, 0, ',', '.'),
                     "date" => $reservationDate,
+                    "timeStart" => $startTime,
+                    "timeEnd" => $endTime,
                     "details" => $history->details,
                     "bankName" => $history->bankName,
                     "accountName" => $history->accountName,
@@ -1166,7 +1049,6 @@ class ReservationController extends Controller
                 'message' => 'Reservasi berhasil diambil',
                 'data' => $data
             ]);
-
         } catch (JWTException $e) {
             return response()->json([
                 'success' => false,
@@ -1181,7 +1063,7 @@ class ReservationController extends Controller
             ], 500);
         }
     }
-
+    
     /**
      * Cancel reservasi dari history_reservation_user
      * 

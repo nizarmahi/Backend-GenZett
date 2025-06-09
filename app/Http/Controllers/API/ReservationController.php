@@ -600,6 +600,7 @@ class ReservationController extends Controller
     public function getScheduleByLocation(Request $request, $locationId)
     {
         try {
+            $location = DB::table('locations')->where('locationId', $locationId)->first();
             $startDate = now()->format('Y-m-d');
             $endDate = now()->addMonths(2)->format('Y-m-d');
             // $endDate = now()->addDays(6)->format('Y-m-d');
@@ -630,6 +631,10 @@ class ReservationController extends Controller
                 return response()->json([
                     'success' => true,
                     'locationId' => $locationId,
+                    'location' => $location ? [
+                        'name' => $location->locationName,
+                        'imagePath' => $location->locationPath,
+                    ] : null,
                     'available_sports' => $availableSports->pluck('sportName'),
                     'fields' => [],
                 ]);
@@ -711,6 +716,10 @@ class ReservationController extends Controller
                 'start_date' => $startDate,
                 'end_date' => $endDate,
                 'locationId' => $locationId,
+                'location' => $location ? [
+                    'name' => $location->locationName,
+                    'imagePath' => $location->locationPath,
+                ] : null,
                 'sportName' => $sportName,
                 'fields' => $scheduleData,
             ]);

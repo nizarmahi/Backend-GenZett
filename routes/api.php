@@ -20,6 +20,7 @@ use App\Http\Controllers\API\UserController;
 use App\Http\Controllers\API\HistoryController;
 use App\Http\Controllers\API\SuperAdmin\DashboardController;
 use App\Http\Controllers\API\Admin\AdminDashboardController;
+use App\Http\Controllers\API\CancellationController;
 
 /*
 |--------------------------------------------------------------------------
@@ -117,7 +118,10 @@ Route::group(['prefix' => 'reservations'], function () {
     Route::put('/{id}/status', [ReservationController::class, 'updatePaymentStatus']);
     Route::post('/{id}/pay', [ReservationController::class, 'confirmPayment']);
 });
-
+Route::group(['prefix' => 'cancellations'], function () {
+    Route::get('/', [CancellationController::class, 'index']);
+    Route::post('/{id}/refund', [CancellationController::class, 'refund']);
+});
 // Payment API routes
 Route::group(['prefix' => 'payments'], function () {
     Route::post('/webhook', [PaymentController::class, 'webhook']);

@@ -198,4 +198,44 @@ class SportController extends Controller
 
         return response()->json($sports);
     }
+
+    public function FieldsCount(Request $request)
+    {
+        $page = $request->input('page', 1);
+        $limit = $request->input('limit', 10);
+        $search = $request->input('search');
+
+        $query = Sport::query();
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('sportName', 'like', "%{$search}%")
+                ->orWhere('description', 'like', "%{$search}%");
+            });
+        }
+
+        $totalSports = $query->count();
+        $offset = ($page - 1) * $limit;
+
+        // Ambil data olahraga dengan pagination
+        $sports = $query->skip($offset)->take($limit)->get();
+
+        // Hitung jumlah lapangan (fields) per olahraga
+        foreach ($sports as $sport) {
+            $sport->totalFields = DB::table('fields')
+                ->where('sportId', $sport->sportId)
+                ->whereNull('deleted_at')
+                ->count();
+        }
+
+        return response()->json([
+            'success' => true,
+            'time' => now()->toISOString(),
+            'message' => 'Data olahraga dengan jumlah lapangan berhasil diambil',
+            'totalSports' => $totalSports,
+            'offset' => $offset,
+            'limit' => $limit,
+            'sports' => $sports
+        ]);
+    }
 }

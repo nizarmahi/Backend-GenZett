@@ -26,7 +26,7 @@ class FieldSeeder extends Seeder
                 $fields[] = [
                     'locationId' => $locationId,
                     'sportId' => 1,
-                    'name' => "Futsal - {$locationName} - Court {$i}",
+                    'name' => "Futsal - Court {$i}",
                     'description' => 'Indoor',
                 ];
             }
@@ -45,7 +45,7 @@ class FieldSeeder extends Seeder
                 $fields[] = [
                     'locationId' => $locationId,
                     'sportId' => 2,
-                    'name' => "Badminton - {$locationName} - Court {$i}",
+                    'name' => "Badminton - Court {$i}",
                     'description' => 'Indoor',
                 ];
             }
@@ -64,7 +64,7 @@ class FieldSeeder extends Seeder
                 $fields[] = [
                     'locationId' => $locationId,
                     'sportId' => 3,
-                    'name' => "Basketball - {$locationName} - Court {$i}",
+                    'name' => "Basketball - Court {$i}",
                     'description' => 'Indoor',
                 ];
             }
@@ -83,7 +83,7 @@ class FieldSeeder extends Seeder
                 $fields[] = [
                     'locationId' => $locationId,
                     'sportId' => 4,
-                    'name' => "Voli - {$locationName} - Court {$i}",
+                    'name' => "Voli - Court {$i}",
                     'description' => 'Outdoor',
                 ];
             }
@@ -101,7 +101,7 @@ class FieldSeeder extends Seeder
                 $fields[] = [
                     'locationId' => $locationId,
                     'sportId' => 5,
-                    'name' => "Tennis - {$locationName} - Court {$i}",
+                    'name' => "Tennis - Court {$i}",
                     'description' => 'Outdoor',
                 ];
             }
@@ -119,7 +119,7 @@ class FieldSeeder extends Seeder
                 $fields[] = [
                     'locationId' => $locationId,
                     'sportId' => 6,
-                    'name' => "Football - {$locationName} - Court {$i}",
+                    'name' => "Football - Court {$i}",
                     'description' => 'Indoor',
                 ];
             }
@@ -137,7 +137,7 @@ class FieldSeeder extends Seeder
                 $fields[] = [
                     'locationId' => $locationId,
                     'sportId' => 7,
-                    'name' => "HandBall - {$locationName} - Field {$i}",
+                    'name' => "HandBall - Field {$i}",
                     'description' => 'Outdoor',
                 ];
             }

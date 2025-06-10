@@ -11,8 +11,8 @@ return new class extends Migration
         Schema::create('users', function (Blueprint $table) {
             $table->id('userId');
             $table->enum('role', ['user', 'admin', 'superadmin'])->default('user');
-            $table->string('name', 255);
-            $table->string('email', 255)->unique();
+            $table->string('name', 30);
+            $table->string('email', 30)->unique();
             $table->string('phone', 15)->nullable()->unique();
 
             $table->string('password', 255); // panjang untuk hash bcrypt

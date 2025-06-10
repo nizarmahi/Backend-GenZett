@@ -11,7 +11,7 @@ class Cancellation extends Model
 
     protected $fillable = [
         'reservation_id',
-        'accoutnName',
+        'accountName',
         'accountNumber',
         'paymentPlatform',
         'reason'

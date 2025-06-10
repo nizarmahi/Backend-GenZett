@@ -20,6 +20,7 @@ use App\Http\Controllers\API\UserController;
 use App\Http\Controllers\API\HistoryController;
 use App\Http\Controllers\API\SuperAdmin\DashboardController;
 use App\Http\Controllers\API\Admin\AdminDashboardController;
+use App\Http\Controllers\API\CancellationController;
 
 /*
 |--------------------------------------------------------------------------
@@ -53,6 +54,7 @@ Route::prefix('admin')->group(function () {
 // Sport API routes
 Route::group(['prefix' => 'sports'], function () {
     Route::get('/', [SportController::class, 'index']);
+    Route::get('/fieldsCount', [SportController::class, 'FieldsCount']);
     Route::get('/{id}', [SportController::class, 'show']);
     Route::post('/', [SportController::class, 'store']);
     Route::put('/{id}', [SportController::class, 'update']);
@@ -110,7 +112,10 @@ Route::group(['prefix' => 'reservations'], function () {
 
     // Route::get('/user/{userId}/detail', [ReservationController::class, '']);
 });
-
+Route::group(['prefix' => 'cancellations'], function () {
+    Route::get('/', [CancellationController::class, 'index']);
+    Route::post('/{id}/refund', [CancellationController::class, 'refund']);
+});
 // Payment API routes
 Route::group(['prefix' => 'payments'], function () {
     Route::post('/webhook', [PaymentController::class, 'webhook']);

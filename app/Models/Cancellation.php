@@ -11,14 +11,11 @@ class Cancellation extends Model
 
     protected $fillable = [
         'reservation_id',
+        'accoutnName',
         'accountNumber',
         'paymentPlatform',
+        'reason'
     ];
-
-    public function user()
-    {
-        return $this->belongsTo(User::class);
-    }
 
     public function reservation()
     {

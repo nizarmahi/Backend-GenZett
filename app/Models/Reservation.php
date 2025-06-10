@@ -36,6 +36,9 @@ class Reservation extends Model
     public function membership()
     {
         return $this->belongsToMany(Membership::class, 'reservation_members', 'reservationId', 'membershipId')->withTimestamps();
-
+    }
+    public function cancellation()
+    {
+        return $this->hasOne(Cancellation::class, 'reservationId');
     }
 }

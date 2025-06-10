@@ -15,6 +15,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\Validator;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 
 /**
  * @group Reservation Management
@@ -964,11 +965,17 @@ class ReservationController extends Controller
             $user = User::find($userId);
 
             $formattedReservations = $historyReservations->map(function ($history) use ($reservations) {
-                $now = now('Asia/Jakarta');
+                $now = \Carbon\Carbon::now(config('app.timezone', 'Asia/Jakarta'));
+
+                // fallback manual kalau config tetap UTC:
+                if (config('app.timezone') === 'UTC') {
+                    $now->addHours(7);
+                }
+                
                 $today = $now->format('Y-m-d');
                 $currentTime = $now->format('H:i:s');
 
-                $reservationDate = $history->reservationDate;
+                $reservationDate = $history->reservationDate->format('Y-m-d');
                 $reservationStatus = $history->reservationStatus;
                 $paymentStatusDisplay = $history->paymentStatus;
 

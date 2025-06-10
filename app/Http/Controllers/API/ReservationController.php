@@ -1277,6 +1277,7 @@ class ReservationController extends Controller
                 ->where('paymentStatus', 'waiting')
                 ->orWhere('paymentStatus', 'canceled')
                 ->orWhere('paymentStatus', 'refund')
+                ->orWhere('paymentStatus', 'rejected')
                 ->when($search, function ($query) use ($search) {
                     $query->where('bookingName', 'like', '%' . $search . '%');
                 })
@@ -1567,6 +1568,7 @@ class ReservationController extends Controller
                     'reservationId' => $historyReservation->reservationId,
                     'bookingName' => $historyReservation->bookingName,
                     'paymentStatus' => $historyReservation->paymentStatus,
+                    'reservationStatus' => $historyReservation->reservationStatus,
                     'rejectReason' => $historyReservation->rejectReason,
                     'processedAt' => $historyReservation->processedAt->format('Y-m-d H:i:s')
                 ]

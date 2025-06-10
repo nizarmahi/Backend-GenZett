@@ -9,8 +9,10 @@ class Cancellation extends Model
 {
     use HasFactory;
 
+    protected $primaryKey = 'cancellationId';
+    
     protected $fillable = [
-        'reservation_id',
+        'reservationId',
         'accountName',
         'accountNumber',
         'paymentPlatform',
@@ -19,6 +21,6 @@ class Cancellation extends Model
 
     public function reservation()
     {
-        return $this->belongsTo(Reservation::class);
+        return $this->belongsTo(Reservation::class, 'reservationId', 'reservationId');
     }
 }

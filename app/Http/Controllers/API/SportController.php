@@ -199,7 +199,7 @@ class SportController extends Controller
         return response()->json($sports);
     }
 
-    public function FieldsCount(Request $request)
+    public function fieldsCount(Request $request)
     {
         $page = $request->input('page', 1);
         $limit = $request->input('limit', 10);

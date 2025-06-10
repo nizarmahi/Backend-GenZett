@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id('membershipId');
             $table->unsignedBigInteger('locationId');
             $table->unsignedBigInteger('sportId');
-            $table->string('name', 25);
+            $table->string('name', 50);
             $table->text('description')->nullable();
             $table->decimal('discount');
             $table->smallInteger('weeks');

@@ -54,6 +54,7 @@ Route::prefix('admin')->group(function () {
 // Sport API routes
 Route::group(['prefix' => 'sports'], function () {
     Route::get('/', [SportController::class, 'index']);
+    Route::get('/fieldsCount', [SportController::class, 'FieldsCount']);
     Route::get('/{id}', [SportController::class, 'show']);
     Route::post('/', [SportController::class, 'store']);
     Route::put('/{id}', [SportController::class, 'update']);

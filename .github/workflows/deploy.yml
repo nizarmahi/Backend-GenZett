@@ -25,7 +25,7 @@ jobs:
           port: 22
           script: |
             echo "🚀 Masuk ke VM Backend"
-            cd /home/genzett/resports-compose/backend/Backend-GenZett || exit 1
+            cd /home/genzett/Backend-GenZett || exit 1
           
             echo "🔍 Branch saat ini"
             git branch
@@ -46,7 +46,6 @@ jobs:
             git status
           
             echo "🐳 Restart Docker Compose"
-            cd ../../
-            docker compose down --remove-orphans
-            docker compose up -d --build
+            cd ../deploy
+            docker compose up -d --build backend mysql
 

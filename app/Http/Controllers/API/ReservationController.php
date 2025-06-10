@@ -1537,7 +1537,8 @@ class ReservationController extends Controller
                 ], 422);
             }
 
-            $historyReservation = HistoryReservationUser::find($historyId);
+            // Load with user relation to avoid null pointer
+            $historyReservation = HistoryReservationUser::with('user')->find($historyId);
 
             if (!$historyReservation) {
                 return response()->json([
@@ -1554,27 +1555,38 @@ class ReservationController extends Controller
             }
 
             // Update status menjadi rejected
-            $historyReservation->update([
+            $updateData = [
                 'paymentStatus' => 'rejected',
+                'reservationStatus' => 'rejected',
                 'rejectReason' => $request->rejectReason,
                 'processedAt' => now()
-            ]);
+            ];
+
+            $historyReservation->update($updateData);
+
+            // Format response data
+            $responseData = [
+                'historyId' => $historyReservation->historyId,
+                'reservationId' => $historyReservation->reservationId,
+                'bookingName' => $historyReservation->bookingName,
+                'paymentStatus' => $historyReservation->paymentStatus,
+                'reservationStatus' => $historyReservation->reservationStatus,
+                'rejectReason' => $historyReservation->rejectReason,
+            ];
+
+            // Add processedAt if not null
+            if ($historyReservation->processedAt) {
+                $responseData['processedAt'] = $historyReservation->processedAt->format('Y-m-d H:i:s');
+            }
 
             return response()->json([
                 'success' => true,
                 'message' => 'Permintaan refund berhasil ditolak',
-                'data' => [
-                    'historyId' => $historyReservation->historyId,
-                    'reservationId' => $historyReservation->reservationId,
-                    'bookingName' => $historyReservation->bookingName,
-                    'paymentStatus' => $historyReservation->paymentStatus,
-                    'reservationStatus' => $historyReservation->reservationStatus,
-                    'rejectReason' => $historyReservation->rejectReason,
-                    'processedAt' => $historyReservation->processedAt->format('Y-m-d H:i:s')
-                ]
+                'data' => $responseData
             ]);
 
         } catch (\Exception $e) {
+            \Log::error('Error rejecting refund: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
             return response()->json([
                 'success' => false,
                 'message' => 'Terjadi kesalahan saat menolak refund',

@@ -14,10 +14,10 @@ return new class extends Migration
         Schema::create('cancellations', function (Blueprint $table) {
             $table->id('cancellationId');
             $table->unsignedBigInteger('reservationId');
-            $table->string('accountName');
-            $table->string('accountNumber');
-            $table->enum('paymentPlatform', ['gopay', 'transferBank', 'ovo', 'dana']);
-            $table->text('reason');
+            $table->string('accountName',30);
+            $table->string('accountNumber',25);
+            $table->string('paymentPlatform',20);
+            $table->text('reason',50);
             $table->timestamps();
 
             $table->foreign('reservationId')->references('reservationId')->on('reservations')->onDelete('cascade');

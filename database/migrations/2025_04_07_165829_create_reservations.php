@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id('reservationId');
             $table->unsignedBigInteger('userId');
             $table->foreign('userId')->references('userId')->on('users')->onDelete('cascade');
-            $table->string('name')->nullable();
+            $table->string('name',30)->nullable();
             $table->enum('paymentStatus', ['pending', 'dp', 'complete', 'fail', 'closed', 'waiting', 'canceled'])->nullable();
             $table->enum('paymentType', ['reguler', 'membership'])->default('reguler');
             $table->integer('total')->nullable();

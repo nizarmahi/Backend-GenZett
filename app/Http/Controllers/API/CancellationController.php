@@ -77,18 +77,34 @@ class CancellationController extends Controller
         ]);
     }
     public function refund($id){
-        $reservation = Reservation::find($id);
-        if (!$reservation) {
+        try {
+            $reservation = Reservation::with('cancellation')->find($id);
+            
+            if (!$reservation) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "Reservasi tidak ditemukan"
+                ], 404);
+            }
+
+            $reservation->paymentStatus = 'canceled';
+            $reservation->save();
+
+            // Hapus cancellation jika ada
+            if ($reservation->cancellation) {
+                $reservation->cancellation->delete();
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Status pembayaran berhasil diubah dan data pembatalan dihapus'
+            ]);
+
+        } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => "Reservasi tidak ditemukan"
-            ], 404);
+                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+            ], 500);
         }
-        $reservation->paymentStatus = 'canceled';
-        $reservation->save();
-        return response()->json([
-            'success' => true,
-            'message' => 'Status pembayaran berhasil diubah'
-        ]);
     }
 }

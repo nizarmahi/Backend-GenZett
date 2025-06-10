@@ -92,8 +92,8 @@ class PaymentController extends Controller
                 'description' => 'Pembayaran reservasi',
                 'amount' => $request->totalPaid,
                 'payment_methods' => ['QRIS'],
-                // 'success_redirect_url' => 'https://resports.web.id/history',
-                'success_redirect_url' => 'http://localhost:3000/history',
+                'success_redirect_url' => 'https://resports.web.id/history',
+                // 'success_redirect_url' => 'http://localhost:3000/history',
                 'failure_redirect_url' => 'https://resports.web.id/reservation'
             ];
 
@@ -108,8 +108,8 @@ class PaymentController extends Controller
                 'xendit_status' => $xenditInvoice->getStatus(),
                 'expiry_date' => $xenditInvoice->getExpiryDate(),
                 'payment_methods' => ['QRIS'],
-                // 'success_redirect_url' => 'https://resports.web.id/history',
-                'success_redirect_url' => 'http://localhost:3000/history',
+                'success_redirect_url' => 'https://resports.web.id/history',
+                // 'success_redirect_url' => 'http://localhost:3000/history',
                 'failure_redirect_url' => 'https://resports.web.id/reservation'
             ]);
 

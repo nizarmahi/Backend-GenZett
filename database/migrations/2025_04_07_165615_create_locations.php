@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id('locationId');
             $table->string('locationName',50)->nullable();
             $table->text('description')->nullable();
-            $table->string('locationPath',50)->nullable();
+            $table->string('locationPath')->nullable();
             $table->string('address',100)->nullable();
             $table->timestamps();
             $table->softDeletes();

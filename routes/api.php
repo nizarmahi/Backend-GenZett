@@ -104,7 +104,6 @@ Route::group(['prefix' => 'reservations'], function () {
 
     Route::get('/', [ReservationController::class, 'index']);
     Route::post('/', [ReservationController::class, 'store']);
-    Route::get('/user', [ReservationController::class, 'userReservations']);
     Route::get('/{id}', [ReservationController::class, 'show']);
     Route::put('/{id}', [ReservationController::class, 'update']);
     Route::put('/{id}/status', [ReservationController::class, 'updatePaymentStatus']);
@@ -112,6 +111,10 @@ Route::group(['prefix' => 'reservations'], function () {
 
     // Route::get('/user/{userId}/detail', [ReservationController::class, '']);
 });
+Route::group(['prefix' => 'history'], function () {
+    Route::get('/user', [HistoryController::class, 'userReservations']);
+});
+
 Route::group(['prefix' => 'cancellations'], function () {
     Route::get('/', [CancellationController::class, 'index']);
     Route::post('/{id}/refund', [CancellationController::class, 'refund']);

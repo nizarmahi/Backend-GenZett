@@ -94,6 +94,7 @@ Route::group(['prefix' => 'fields'], function () {
     Route::get('/availableTimes/{fieldId}', [FieldController::class, 'getAvailableTimes']);
     Route::get('/getPrice/{id}', [FieldController::class, 'getPrice']);
 });
+
 Route::group(['prefix' => 'reservations'], function () {
     Route::get('/location', [ReservationController::class, 'getAllLocations']);
     Route::get('/sport', [ReservationController::class, 'getSports']);

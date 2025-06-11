@@ -18,6 +18,7 @@ class UserSeeder extends Seeder
             ['userId' => 3, 'name' => 'Admin3', 'email' => 'admin3@gmail.com', 'phone' => '089876543212', 'password' => Hash::make('admin123'), 'role' => 'admin', 'created_at' => Carbon::now()],
             ['userId' => 4, 'name' => 'Admin4', 'email' => 'admin4@gmail.com', 'phone' => '089876543213', 'password' => Hash::make('admin123'), 'role' => 'admin', 'created_at' => Carbon::now()],
             ['userId' => 5, 'name' => 'Admin5', 'email' => 'admin5@gmail.com', 'phone' => '089876543214', 'password' => Hash::make('admin123'), 'role' => 'admin', 'created_at' => Carbon::now()],
+            ['userId' => 6, 'name' => 'superadmin', 'email' => 'superadmin@gmail.com', 'phone' => '089876543215', 'password' => Hash::make('superadmin'), 'role' => 'superadmin', 'created_at' => Carbon::now()],
         ]);
 
         $users = [

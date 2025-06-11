@@ -10,21 +10,37 @@ class ReservationSeeder extends Seeder
 {
     public function run(): void
     {
-        $reservations = [
-            ['userId' => 6, 'name' => 'Booking 1', 'paymentStatus' => 'pending', 'total' => 150000],
-            ['userId' => 7, 'name' => 'Booking 2', 'paymentStatus' => 'dp', 'total' => 200000],
-            ['userId' => 8, 'name' => 'Booking 3', 'paymentStatus' => 'complete', 'total' => 250000],
-            ['userId' => 9, 'name' => 'Booking 4', 'paymentStatus' => 'pending', 'total' => 180000],
-            ['userId' => 10, 'name' => 'Booking 5', 'paymentStatus' => 'complete', 'total' => 300000],
+        $reservations = [];
+        $type = ['reguler', 'membership'];
+        $statusReservation = ['pending', 'dp', 'complete', 'fail', 'closed', 'canceled'];
+        $name = [
+            'Regular Match', 'Tournament', 'Training Session', 'Friendly Game',
+            'League Match', 'Championship', 'Practice', 'Tryout',
+            'School Event', 'Company Outing', 'Birthday Party', 'Charity Event'
         ];
 
-        foreach ($reservations as $res) {
-            DB::table('reservations')->insert([
-                ...$res,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-        }
-    }
+        for ($i = 1; $i <= 50; $i++) {
+            $userId = rand(6, 10);
+            $status = $statusReservation[array_rand($statusReservation)];
+            $event = $name[array_rand($name)] . ' ' . ($i % 10 + 1);
+            $total = rand(10, 25) * 10000;
+            if ($i % 20 == 0) {
+                $typeReservation = $type[1];
+            } else {
+                $typeReservation = $type[0];
+            }
 
+            $reservations[] = [
+                'userId' => $userId,
+                'name' => $event,
+                'paymentStatus' => $status,
+                'paymentType' => $typeReservation,
+                'total' => $total,
+                'created_at' => now(),
+                'updated_at' => now()
+            ];
+        }
+
+        DB::table('reservations')->insert($reservations);
+    }
 }

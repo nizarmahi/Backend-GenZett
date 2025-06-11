@@ -16,32 +16,84 @@ class MembershipController extends Controller
      */
     public function index(Request $request)
     {
-        $memberships = Membership::with(['location', 'sport'])->get();
+        $page = (int)$request->input('page', 1);
+        $limit = (int)$request->input('limit', 10);
+        $search = $request->input('search');
+        $sports = $request->input('sports');
+        $locations = $request->input('locations');
+        $showAll = filter_var($request->input('all'), FILTER_VALIDATE_BOOLEAN); // cek parameter all=true
+
+        $query = Membership::with(['locations', 'sports']);
+
+        // Apply filters
+        if (!empty($sports)) {
+            $query->whereHas('sports', function ($q) use ($sports) {
+                if (is_numeric($sports)) {
+                    $q->where('sportId', $sports);
+                } else {
+                    $q->where('sportName', $sports);
+                }
+            });
+        }
+
+        if (!empty($locations)) {
+            $query->whereHas('locations', function ($q) use ($locations) {
+                if (is_numeric($locations)) {
+                    $q->where('locationId', $locations);
+                } else {
+                    $q->where('locationName', $locations);
+                }
+            });
+        }
+
+        if (!empty($search)) {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', '%' . $search . '%')
+                    ->orWhereHas('locations', function ($q) use ($search) {
+                        $q->where('locationName', 'like', '%' . $search . '%');
+                    })
+                    ->orWhereHas('sports', function ($q) use ($search) {
+                        $q->where('sportName', 'like', '%' . $search . '%');
+                    });
+            });
+        }
+
+        $totalMemberships = $query->count();
+
+        // Ambil data
+        if ($showAll) {
+            $memberships = $query->get();
+            $offset = 0;
+            $limit = $totalMemberships;
+        } else {
+            $offset = ($page - 1) * $limit;
+            $memberships = $query->skip($offset)->take($limit)->get();
+        }
+
+        $formattedMemberships = $memberships->map(function ($membership) use ($totalMemberships) {
+            return [
+                'membershipId' => $membership->membershipId,
+                'name' => $membership->name,
+                'description' => $membership->description,
+                'discount' => $membership->discount,
+                'weeks' => $membership->weeks,
+                'locationId' => $membership->locationId,
+                'locationName' => $membership->locations->locationName ?? null,
+                'sportId' => $membership->sportId,
+                'sportName' => $membership->sports->sportName ?? null,
+                'totalMemberships' => $totalMemberships
+            ];
+        });
+
         return response()->json([
             'success' => true,
             'time' => now()->toISOString(),
-            'total' => $memberships->count(),
-            'message' => 'Data Paket Langganan berhasil diambil',
-            'data' => $memberships->map(function($membership) {
-                return [
-                    'id' => $membership->membershipId,
-                    'name' => $membership->name,
-                    'description' => $membership->description,
-                    'price' => $membership->price,
-                    'weeks' => $membership->weeks,
-                    'location' => [
-                    'id' => $membership->location->locationId,
-                    'name' => $membership->location->name
-                    ],
-                    'sport' => [
-                    'id' => $membership->sport->sportId,
-                    'name' => $membership->sport->name
-                    ],
-                    'created_at' => $membership->created_at,
-                    'updated_at' => $membership->updated_at
-                ];
-            })
-        ], 200);
+            'message' => $showAll ? 'Semua data Paket Langganan berhasil diambil' : 'Data Paket Langganan berhasil diambil',
+            'totalMemberships' => $totalMemberships,
+            'offset' => $offset,
+            'limit' => $limit,
+            'data' => $formattedMemberships
+        ]);
     }
 
     /**
@@ -54,7 +106,7 @@ class MembershipController extends Controller
             'sportId' => 'required|exists:sports,sportId',
             'name' => 'required|string|max:25',
             'description' => 'required|string',
-            'price' => 'required|integer|min:0',
+            'discount' => 'required|numeric|min:0',
             'weeks' => 'required|integer|min:1',
         ]);
 
@@ -67,35 +119,27 @@ class MembershipController extends Controller
 
         $membership = Membership::create($request->all());
 
-        $membership = Membership::with(['location', 'sport'])->find($membership->membershipId);
-        
+        $membership = Membership::with(['locations', 'sports'])->find($membership->membershipId);
+
         if (!$membership) {
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to create membership'
             ], 500);
         }
-        
+
         return response()->json([
-            'status' => 'success',
+            'success' => true,
             'time' => now()->toISOString(),
-            'message' => 'Paket Langganan berhasil dibuat',
+            'message' => 'Paket Langganan berhasil ditambahkan',
             'data' => [
-            'id' => $membership->membershipId,
-            'name' => $membership->name,
-            'description' => $membership->description,
-            'price' => $membership->price,
-            'weeks' => $membership->weeks,
-            'location' => [
-                'id' => $membership->location->locationId,
-                'name' => $membership->location->name
-            ],
-            'sport' => [
-                'id' => $membership->sport->sportId,
-                'name' => $membership->sport->name
-            ],
-            'created_at' => $membership->created_at,
-            'updated_at' => $membership->updated_at
+                'membershipId' => $membership->membershipId,
+                'name' => $membership->name,
+                'description' => $membership->description,
+                'discount' => $membership->discount,
+                'weeks' => $membership->weeks,
+                'locationName' => $membership->locations->locationName,
+                'sportName' => $membership->sports->sportName,
             ]
         ], 201);
     }
@@ -105,8 +149,8 @@ class MembershipController extends Controller
      */
     public function show(string $id)
     {
-        
-        $membership = Membership::with(['location', 'sport'])->find($id);
+
+        $membership = Membership::with(['locations', 'sports'])->find($id);
 
         if (!$membership) {
             return response()->json([
@@ -118,23 +162,15 @@ class MembershipController extends Controller
         return response()->json([
             'success' => true,
             'time' => now()->toISOString(),
-            'message' => "Data Paket Langganan dengan ID $id ditemukan", 
+            'message' => "Data Paket Langganan dengan ID $id ditemukan",
             'data' => [
-                'id' => $membership->membershipId,
+                'membershipId' => $membership->membershipId,
                 'name' => $membership->name,
                 'description' => $membership->description,
-                'price' => $membership->price,
+                'discount' => $membership->discount,
                 'weeks' => $membership->weeks,
-                'location' => [
-                    'id' => $membership->location->locationId,
-                    'name' => $membership->location->name
-                ],
-                'sport' => [
-                    'id' => $membership->sport->sportId,
-                    'name' => $membership->sport->name
-                ],
-                'created_at' => $membership->created_at,
-                'updated_at' => $membership->updated_at
+                'locationName' => $membership->locations->locationName,
+                'sportName' => $membership->sports->sportName,
             ]
         ], 200);
     }
@@ -159,7 +195,7 @@ class MembershipController extends Controller
             'sportId' => 'exists:sports,sportId',
             'name' => 'string|max:25',
             'description' => 'string',
-            'price' => 'integer|min:0',
+            'discount' => 'numeric|min:0',
             'weeks' => 'integer|min:1',
         ]);
 
@@ -172,28 +208,20 @@ class MembershipController extends Controller
 
         $membership->update($request->all());
 
-        $membership = Membership::with(['location', 'sport'])->find($membership->membershipId);
+        $membership = Membership::with(['locations', 'sports'])->find($membership->membershipId);
 
         return response()->json([
             'success' => true,
             'time' => now()->toISOString(),
             'message' => 'Paket Langganan berhasil diperbarui',
             'data' => [
-            'id' => $membership->membershipId,
-            'name' => $membership->name,
-            'description' => $membership->description,
-            'price' => $membership->price,
-            'weeks' => $membership->weeks,
-            'location' => [
-                'id' => $membership->location->locationId,
-                'name' => $membership->location->name
-            ],
-            'sport' => [
-                'id' => $membership->sport->sportId,
-                'name' => $membership->sport->name
-            ],
-            'created_at' => $membership->created_at,
-            'updated_at' => $membership->updated_at
+                'membershipId' => $membership->membershipId,
+                'name' => $membership->name,
+                'description' => $membership->description,
+                'discount' => $membership->discount,
+                'weeks' => $membership->weeks,
+                'locationName' => $membership->locations->locationName,
+                'sportName' => $membership->sports->sportName,
             ]
         ], 200);
     }
@@ -207,7 +235,7 @@ class MembershipController extends Controller
 
         if (!$membership) {
             return response()->json([
-                'success' => false, 
+                'success' => false,
                 'message' => "Paket Langganan dengan ID $id tidak ditemukan"
             ], 404);
         }
@@ -215,9 +243,72 @@ class MembershipController extends Controller
         $membership->delete();
 
         return response()->json([
-            'success' => true, 
+            'success' => true,
             'time' => now()->toISOString(),
             'message' => 'Paket Langganan berhasil dihapus'
         ], 200);
+    }
+
+    /**
+     * Display a listing of the resource without pagination.
+     */
+    public function getAllMembers(Request $request)
+    {
+        $search = $request->input('search');
+        $sports = $request->input('sports');
+        $locations = $request->input('locations');
+
+        $query = Membership::with(['locations', 'sports']);
+
+        // Apply filters
+        if (!empty($sports)) {
+            $query->whereHas('sports', function ($q) use ($sports) {
+                $q->where('sportName', $sports);
+            });
+        }
+
+        if (!empty($locations)) {
+            $query->whereHas('locations', function ($q) use ($locations) {
+                $q->where('locationName', $locations);
+            });
+        }
+
+        if (!empty($search)) {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', '%' . $search . '%')
+                    ->orWhereHas('locations', function ($q) use ($search) {
+                        $q->where('locationName', 'like', '%' . $search . '%');
+                    })
+                    ->orWhereHas('sports', function ($q) use ($search) {
+                        $q->where('sportName', 'like', '%' . $search . '%');
+                    });
+            });
+        }
+
+        $memberships = $query->get();
+        $totalMemberships = $memberships->count();
+
+        $formattedMemberships = $memberships->map(function ($membership) use ($totalMemberships) {
+            return [
+                'membershipId' => $membership->membershipId,
+                'name' => $membership->name,
+                'description' => $membership->description,
+                'discount' => $membership->discount,
+                'weeks' => $membership->weeks,
+                'locationId' => $membership->locationId,
+                'locationName' => $membership->locations->locationName ?? null,
+                'sportId' => $membership->sportId,
+                'sportName' => $membership->sports->sportName ?? null,
+                'totalMemberships' => $totalMemberships
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'time' => now()->toISOString(),
+            'message' => 'Semua data Paket Langganan berhasil diambil',
+            'totalMemberships' => $totalMemberships,
+            'data' => $formattedMemberships
+        ]);
     }
 }

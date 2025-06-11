@@ -19,9 +19,10 @@ return new class extends Migration
             $table->unsignedBigInteger('sportId');
             $table->foreign('sportId')->references('sportId')->on('sports')->onDelete('cascade');
 
-            $table->string('name');
+            $table->string('name',30);
             $table->text('description')->nullable();
             $table->timestamps();
+            $table->softDeletes();
         });
     }
 

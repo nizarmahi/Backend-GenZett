@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
+use App\Models\Admin;
 use Illuminate\Http\Request;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
@@ -18,8 +19,18 @@ class AuthController extends Controller
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email',
-            'phone' => 'required|string|max:255',
+            'phone' => 'required|string|max:255|unique:users,phone',
             'password' => 'required|string|min:8|confirmed', // Pastikan password dikonfirmasi
+        ], [
+            'name.required' => 'Nama wajib diisi.',
+            'email.required' => 'Email wajib diisi.',
+            'email.email' => 'Format email tidak valid.',
+            'email.unique' => 'Email sudah terdaftar.',
+            'phone.required' => 'Nomor HP wajib diisi.',
+            'phone.unique' => 'Nomor HP sudah terdaftar.',
+            'password.required' => 'Kata sandi wajib diisi.',
+            'password.min' => 'Kata sandi minimal 8 karakter.',
+            'password.confirmed' => 'Konfirmasi kata sandi tidak cocok.',
         ]);
 
         if ($validator->fails()) {
@@ -71,25 +82,41 @@ class AuthController extends Controller
 
         $user = Auth::user();
 
-        // Tambahkan custom claims termasuk role
+        $userInfo = [
+            'id' => $user->userId,
+            'email' => $user->email,
+            'name' => $user->name,
+            'role' => $user->role,
+            'phone' => $user->phone,
+            'created_at' => $user->created_at,
+        ];
+
+        // Jika role-nya admin, tambahkan location_id
+        if ($user->role === 'admin') {
+            $admin = $user->admin;
+            if ($admin) {
+                $userInfo['locationId'] = $admin->locationId;
+            }
+        }
+
         $customClaims = [
             'role' => $user->role,
             'user_id' => $user->userId,
-            'email' => $user->email
+            'name' => $user->name,
+            'email' => $user->email,
+            'phone' => $user->phone,
+            'created_at' => $user->created_at,
         ];
+        if ($user->role === 'admin' && $user->admin) {
+            $customClaims['locationId'] = $user->admin->locationId;
+        }
 
-        // Generate token dengan custom claims
         $tokenWithClaims = JWTAuth::claims($customClaims)->attempt($credentials);
 
         return response()->json([
             'message' => 'Login berhasil',
-            'user' => [
-                'id' => $user->userId,
-                'email' => $user->email,
-                'name' => $user->name,
-                'role' => $user->role,
-            ],
-            'token' => $tokenWithClaims // Gunakan token yang sudah include claims
+            'user' => $userInfo,
+            'token' => $tokenWithClaims,
         ]);
     }
 
@@ -102,4 +129,48 @@ class AuthController extends Controller
             'message' => 'You have been logged out successfully.'
         ]);
     }
+    public function editAdminProfile(Request $request, $id)
+    {
+        $validated = $request->validate([
+            'name' => 'nullable|string|max:255',
+            'phone' => 'nullable|string|max:255',
+        ]);
+
+        $admin = Admin::findOrFail($id);
+        
+        $user = User::findOrFail($admin->userId);
+        $user->update([
+            'name' => $validated['name'],
+            'phone' => $validated['phone'],
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'time' => now()->toISOString(),
+            'message' => 'Admin berhasil diperbarui',
+            'admin' => $admin,
+            'user' => $user
+        ]);
+    }
+    public function changePassword(Request $request)
+    {
+        $request->validate([
+            'oldPassword' => 'required|string|min:8',
+            'newPassword' => 'required|string|min:8',
+        ]);
+
+        $user = $request->user();
+
+        if (!Hash::check($request->oldPassword, $user->password)) {
+            throw ValidationException::withMessages([
+                'oldPassword' => ['Password lama tidak sesuai.'],
+            ]);
+        }
+
+        $user->password = Hash::make($request->newPassword);
+        $user->save();
+
+        return response()->json(['message' => 'Password berhasil diubah'], 200);
+    }
+
 }

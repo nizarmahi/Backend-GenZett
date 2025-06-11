@@ -4,7 +4,7 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use App\Models\Field;
-use App\Models\Location;
+use App\Models\ReservationDetail;
 use App\Models\Sport;
 use App\Models\Time;
 use Carbon\Carbon;
@@ -21,63 +21,51 @@ class FieldController extends Controller
      * @param Request $request
      * @return \Illuminate\Http\JsonResponse
      */
-    public function index(Request $request){
-        $page = (int)$request->input('page', 1);
-        $limit = (int)$request->input('limit', 10);
+    public function index(Request $request)
+    {
+        $page = (int) $request->input('page', 1);
+        $limit = (int) $request->input('limit', 10);
         $search = $request->input('search');
         $sports = $request->input('sports') ? explode('.', $request->input('sports')) : [];
         $locations = $request->input('locations') ? explode('.', $request->input('locations')) : [];
 
-        $admin = auth()->user()->admin;
-
-        if (!$admin) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Akses ditolak. Anda bukan Admin Cabang ini.'
-            ], 403);
-        }
-
-        // Start query with eager loading of relationships
-        $query = Field::with(['location', 'sport', 'times'])
-            ->where('locationId', $admin->location_id);
+        $query = Field::with(['location', 'sport', 'times']);
 
         // Apply filters
         if (!empty($sports)) {
-            $query->hasSport($sports);
+            $query->whereIn('sportId', $sports);
         }
 
         if (!empty($locations)) {
-            $query->hasLocation($locations);
+            $query->whereIn('locationId', $locations);
         }
 
-        if ($search) {
-            $query->search($search);
+        if (!empty($search)) {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', '%' . $search . '%')
+                ->orWhereHas('location', function ($q) use ($search) {
+                    $q->where('locationName', 'like', '%' . $search . '%');
+                })
+                ->orWhereHas('sport', function ($q) use ($search) {
+                    $q->where('sportName', 'like', '%' . $search . '%');
+                });
+            });
         }
 
-        // Get total count
         $totalFields = $query->count();
-
-        // Calculate offset
         $offset = ($page - 1) * $limit;
-
-        // Get paginated results
         $fields = $query->skip($offset)->take($limit)->get();
 
-        // Format the response
         $formattedFields = $fields->map(function ($field) {
-            // Group sports by each field
-            $sports = $field->sport->sportName;
-
+           $availableTimes = $field->times->where('status', 'available');
             return [
                 'id' => $field->fieldId,
                 'name' => $field->name,
-                'location' => $field->location->locationName,
-                'sport' => $sports,
-                'startHour' => $field->times->min('time'),
-                'endHour' => $field->times->max('time'),
-                'desc' => $field->description,
-                'created_at' => $field->created_at,
-                'updated_at' => $field->updated_at,
+                'location' => $field->location->locationName ?? null,
+                'sport' => $field->sport->sportName ?? null,
+                'startHour' => $availableTimes->min('time'),
+                'endHour' => $availableTimes->max('time'),
+                'description' => $field->description,
             ];
         });
 
@@ -91,6 +79,7 @@ class FieldController extends Controller
             'fields' => $formattedFields
         ]);
     }
+
   
     /**
      * Detail Lapangan
@@ -102,8 +91,7 @@ class FieldController extends Controller
      */
     public function show($id)
     {
-        $field = Field::with(['location', 'sport', 'times'])
-            ->find($id);
+        $field = Field::with(['location', 'sport', 'times'])->find($id);
 
         if (!$field) {
             return response()->json([
@@ -112,16 +100,22 @@ class FieldController extends Controller
             ], 404);
         }
 
+        $times = $field->times->where('fieldId', $field->fieldId);
         $formattedField = [
             'id' => $field->fieldId,
             'name' => $field->name,
-            'location' => $field->location->locationName,
-            'sport' => $field->sport->sportName,
+            'location' => $field->location->locationId,
+            'sport' => $field->sport->sportId,
             'description' => $field->description,
             'startHour' => $field->times->min('time'),
             'endHour' => $field->times->max('time'),
-            'created_at' => $field->created_at,
-            'updated_at' => $field->updated_at,
+            'times' => $times->map(function ($time) {
+                return [
+                    'time' => $time->time,
+                    'price' => $time->price,
+                    'status' => $time->status,
+                ];
+            })->values(),
         ];
 
         return response()->json([
@@ -143,76 +137,75 @@ class FieldController extends Controller
      */
     public function update(Request $request, $id)
     {
-        $field = Field::findOrFail($id);
-
-        $admin = auth()->user()->admin;
-
-        if (!$admin || $field->locationId !== $admin->location_id) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Anda tidak memiliki izin untuk mengubah lapangan ini.'
-            ], 403);
-        }
-
-        $validator = Validator::make($request->all(), [
+        $validated = $request->validate([
             'locationId' => 'required|integer',
             'sportId' => 'required|integer',
-            'name' => 'required|string|max:255',
-            'startHour' => 'required|string',
-            'endHour' => 'required|string',
+            'name' => 'required|string',
+            'startHour' => 'required|date_format:H:i',
+            'endHour' => 'required|date_format:H:i|after:startHour',
             'description' => 'required|string',
+            'start' => 'required|array',
+            'start.*' => 'required|date_format:H:i',
+            'end' => 'required|array',
+            'end.*' => 'required|date_format:H:i',
+            'price' => 'required|array',
+            'price.*' => 'required|numeric|min:0',
         ]);
 
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Validasi gagal',
-                'errors' => $validator->errors()
-            ], 422);
-        }
-
-        $validatedData = $validator->validated();
-
+        // Find the field to update
         $field = Field::findOrFail($id);
-        $field->update($validatedData);
 
-        // Konversi jam
-        $startHourRaw = str_replace('.', ':', $validatedData['startHour']);
-        $endHourRaw = str_replace('.', ':', $validatedData['endHour']);
-        $startHour = Carbon::createFromFormat('H:i', $startHourRaw)->hour;
-        $endHour = Carbon::createFromFormat('H:i', $endHourRaw)->hour;
+        // Update the field data
+        $field->update([
+            'locationId' => $validated['locationId'],
+            'sportId' => $validated['sportId'],
+            'name' => $validated['name'],
+            'startHour' => $validated['startHour'],
+            'endHour' => $validated['endHour'],
+            'description' => $validated['description'],
+        ]);
 
-        // Ambil jam yang sudah ada di tabel times
-        $existingTimes = Time::where('fieldId', $field->fieldId)->get();
-        $existingHours = $existingTimes->pluck('time')->map(function ($time) {
-            return Carbon::createFromFormat('H:i:s', $time)->hour;
-        })->toArray();
+        // Mark old time slots as unavailable
+        Time::where('fieldId', $field->fieldId)->update(['status' => 'non-available']);
 
-        // Tambahkan jam baru jika diperpanjang
-        for ($hour = $startHour; $hour < $endHour; $hour++) {
-            if (!in_array($hour, $existingHours)) {
-                Time::create([
-                    'fieldId'   => $field->fieldId,
-                    'time'      => Carbon::createFromTime($hour, 0, 0)->format('H:i:s'),
-                    'status'    => 'Available',
-                    'price'     => 100000,
-                ]);
-            }
-        }
+        // Recreate new time slots
+        foreach ($validated['start'] as $index => $startTime) {
+            $start = Carbon::createFromFormat('H:i', $startTime);
+            $end = Carbon::createFromFormat('H:i', $validated['end'][$index]);
+            $slotPrice = $validated['price'][$index];
 
-        foreach ($existingTimes as $time) {
-            $hour = Carbon::createFromFormat('H:i:s', $time->time)->hour;
-            if ($hour < $startHour || $hour >= $endHour) {
-                $time->delete();
+            while ($start < $end) {
+                $timeString = $start->format('H:i');
+                
+                $existingSlot = Time::where('fieldId', $field->fieldId)
+                                    ->where('time', $timeString)
+                                    ->first();
+                
+                if (!$existingSlot) {
+                    Time::create([
+                        'fieldId' => $field->fieldId,
+                        'time'    => $timeString,
+                        'status'  => 'available',
+                        'price'   => $slotPrice,
+                    ]);
+                } else {
+                    // Optional: update existing slot if needed
+                    $existingSlot->update([
+                        'status' => 'available',
+                        'price' => $slotPrice,
+                    ]);
+                }
+
+                $start->addHour();
             }
         }
 
         return response()->json([
             'success' => true,
-            'message' => 'Lapangan berhasil diperbarui',
-            'field' => $field
+            'time' => now()->toISOString(),
         ]);
     }
+
 
     /**
      * Hapus Lapangan
@@ -222,18 +215,9 @@ class FieldController extends Controller
      * @param int $id
      * @return \Illuminate\Http\JsonResponse
      */
-    public function destroy($id)
+    public function delete($id)
     {
         $field = Field::find($id);
-
-        $admin = auth()->user()->admin;
-
-        if (!$admin || $field->locationId !== $admin->location_id) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Anda tidak memiliki izin untuk menghapus lapangan ini.'
-            ], 403);
-        }
 
         if (!$field) {
             return response()->json([
@@ -250,6 +234,11 @@ class FieldController extends Controller
             ], 409);
         }
 
+        foreach ($field->times as $time) {
+            $time->status = 'non-available';
+            $time->save();
+        }
+        
         $field->delete();
 
         return response()->json([
@@ -269,92 +258,150 @@ class FieldController extends Controller
      */
     public function store(Request $request)
     {
-        $admin = auth()->user()->admin;
-
-        if (!$admin) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Akses ditolak. Anda bukan Admin Cabang ini.'
-            ], 403);
-        }
-
         $validated = $request->validate([
             'locationId' => 'required|integer',
             'sportId' => 'required|integer',
-            'name' => 'required|string|max:255',
-            'startHour' => 'required|string', // format: 'HH:MM'
-            'endHour' => 'required|string',   // format: 'HH:MM'
+            'name' => 'required|string',
+            'startHour' => 'required|date_format:H:i',
+            'endHour' => 'required|date_format:H:i|after:startHour',
             'description' => 'required|string',
+            'start' => 'required|array',
+            'start.*' => 'required|date_format:H:i',
+            'end' => 'required|array',
+            'end.*' => 'required|date_format:H:i',
+            'price' => 'required|array',
+            'price.*' => 'required|numeric|min:0',
         ]);
 
-        $validated['locationId'] = $admin->location_id;
+        $field = Field::create([
+            'locationId' => $validated['locationId'],
+            'sportId' => $validated['sportId'],
+            'name' => $validated['name'],
+            'startHour' => $validated['startHour'],
+            'endHour' => $validated['endHour'],
+            'description' => $validated['description'],
+        ]);
 
-        $field = Field::create($validated);
+        foreach ($validated['start'] as $index => $startTime) {
+            $start = Carbon::createFromFormat('H:i', $startTime);
+            $end = Carbon::createFromFormat('H:i', $validated['end'][$index]);
+            $slotPrice = $validated['price'][$index];
 
-        $startHour = Carbon::createFromFormat('H:i', $validated['startHour'])->hour;
-        $endHour = Carbon::createFromFormat('H:i', $validated['endHour'])->hour;
+            while ($start < $end) {
+                Time::create([
+                    'fieldId' => $field->fieldId,
+                    'time'    => $start->format('H:i'),
+                    'status'  => 'available',
+                    'price'   => $slotPrice,
+                ]);
 
-        for ($hour = $startHour; $hour < $endHour; $hour++) {
-            Time::create([
-                // Jika `timeId` auto increment, hapus baris ini
-                // 'timeId'  => optional,
-
-                'fieldId'   => $field->fieldId,
-                'time'      => Carbon::createFromTime($hour, 0, 0)->format('H:i:s'),
-                'status'    => 'Available',
-                'price'     => 100000,
-            ]);
+                $start->addHour();
+            }
         }
 
         return response()->json([
             'success' => true,
             'time' => now()->toISOString(),
-            'message' => 'Lapangan berhasil ditambahkan',
-            'field' => $field
-        ], 201);
-    }
-
-    /**
-     * Mengambil semua olahraga yang tersedia
-     *
-     * Mendapatkan daftar semua olahraga yang tersedia di lapangan.
-     *
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function getAllSports()
-    {
-        // Get unique sports from all fields
-        $sports = Sport::select('sportId', 'sportName')
-            ->whereHas('fields')  // Only sports that are used in fields
-            ->get();
-
-        return response()->json([
-            'success' => true,
-            'time' => now()->toISOString(),
-            'message' => 'List of all available sports',
-            'sports' => $sports
         ]);
     }
 
-    /**
-     * Mengambil semua lokasi yang tersedia
-     *
-     * Mendapatkan daftar semua lokasi yang tersedia di lapangan.
-     *
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function getAllLocations()
-    {
-        // Get unique locations from all fields
-        $locations = Location::select('locationId', 'locationName')
-            ->whereHas('fields')  // Only locations that are used in fields
-            ->get();
-
-        return response()->json([
-            'success' => true,
-            'time' => now()->toISOString(),
-            'message' => 'List of all available locations',
-            'locations' => $locations
-        ]);
+    // Untuk olahraga
+    public function getAllSports() {
+        $sports = Sport::select('sportId as id', 'sportName as name')->get();
+        return response()->json($sports);
     }
+
+    public function getAllFields(Request $request) {
+        $locationId = $request->input('locationId');
+        $query = Field::select('fieldId as id', 'name');
+        
+        if ($locationId) {
+            $query->where('locationId', $locationId);
+        }
+        $fields = $query->get();
+        
+        return response()->json($fields);
+    }
+    
+    public function getAvailableTimes(Request $request)
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'fieldId' => 'required|exists:fields,fieldId',
+                'date' => 'required|date',
+                'excludeClosedId' => 'sometimes|integer|exists:reservations,reservationId'
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Parameter tidak valid',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            $fieldId = $request->fieldId;
+            $date = $request->date;
+            $excludeClosedId = $request->excludeClosedId;
+
+            // Ambil semua waktu untuk field ini
+            $allTimes = Time::select('timeId', 'time', 'status')
+                ->where('fieldId', $fieldId)
+                ->orderBy('time')
+                ->get();
+
+            // Ambil waktu yang sudah di-booking (exclude yang sedang di-edit)
+            $bookedQuery = ReservationDetail::where('fieldId', $fieldId)
+                ->whereDate('date', $date);
+
+            if ($excludeClosedId) {
+                $bookedQuery->whereHas('reservation', function($q) use ($excludeClosedId) {
+                    $q->where('reservationId', '!=', $excludeClosedId);
+                });
+            }
+
+            $bookedTimeIds = $bookedQuery->pluck('timeId')->toArray();
+
+            // Format response
+            $times = $allTimes->map(function($time) use ($bookedTimeIds) {
+                $status = 'available';
+                
+                if ($time->status !== 'available') {
+                    $status = 'non-available';
+                } elseif (in_array($time->timeId, $bookedTimeIds)) {
+                    $status = 'booked';
+                }
+
+                return [
+                    'timeId' => (string)$time->timeId,
+                    'time' => $time->time,
+                    'status' => $status
+                ];
+            });
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Waktu tersedia berhasil diambil',
+                'times' => $times->toArray()
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengambil waktu tersedia'
+            ], 500);
+        }
+    }
+
+    public function getPrice($id)
+    {
+        $price = Time::select('time', 'price')
+            ->where('fieldId', $id)
+            ->where('status', 'available')
+            ->orderBy('time')
+            ->get();
+            
+        return response()->json($price);
+    }
+
 }

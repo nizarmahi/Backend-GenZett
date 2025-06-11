@@ -40,6 +40,7 @@ class SportController extends Controller
             $sport->countLocation = DB::table('fields')
                 ->join('locations', 'fields.locationId', '=', 'locations.locationId')
                 ->where('fields.sportId', $sport->sportId)
+                ->where('fields.deleted_at', null)
                 ->distinct('locations.locationId')
                 ->count('locations.locationId');
         }
@@ -157,7 +158,7 @@ class SportController extends Controller
      * @param int $id
      * @return \Illuminate\Http\JsonResponse
      */
-    public function destroy($id)
+    public function delete($id)
     {
         $sport = Sport::find($id);
 
@@ -170,7 +171,7 @@ class SportController extends Controller
         }
 
         // Cek apakah masih digunakan pada field
-        $fieldsCount = DB::table('fields')->where('sportId', $id)->count();
+        $fieldsCount = DB::table('fields')->where('sportId', $id)->where('deleted_at', null)->count();
 
         if ($fieldsCount > 0) {
             return response()->json([
@@ -186,6 +187,55 @@ class SportController extends Controller
             'success' => true,
             'time' => now()->toISOString(),
             'message' => 'Sport berhasil dihapus'
+        ]);
+    }
+    public function getAllSports()
+    {
+        // Get unique sports from all fields
+        $sports = Sport::select('sportId as id', 'sportName as name')
+            ->whereHas('fields')  // Only sports that are used in fields
+            ->get();
+
+        return response()->json($sports);
+    }
+
+    public function fieldsCount(Request $request)
+    {
+        $page = $request->input('page', 1);
+        $limit = $request->input('limit', 10);
+        $search = $request->input('search');
+
+        $query = Sport::query();
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('sportName', 'like', "%{$search}%")
+                ->orWhere('description', 'like', "%{$search}%");
+            });
+        }
+
+        $totalSports = $query->count();
+        $offset = ($page - 1) * $limit;
+
+        // Ambil data olahraga dengan pagination
+        $sports = $query->skip($offset)->take($limit)->get();
+
+        // Hitung jumlah lapangan (fields) per olahraga
+        foreach ($sports as $sport) {
+            $sport->totalFields = DB::table('fields')
+                ->where('sportId', $sport->sportId)
+                ->whereNull('deleted_at')
+                ->count();
+        }
+
+        return response()->json([
+            'success' => true,
+            'time' => now()->toISOString(),
+            'message' => 'Data olahraga dengan jumlah lapangan berhasil diambil',
+            'totalSports' => $totalSports,
+            'offset' => $offset,
+            'limit' => $limit,
+            'sports' => $sports
         ]);
     }
 }

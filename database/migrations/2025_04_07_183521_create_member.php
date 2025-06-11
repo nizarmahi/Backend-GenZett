@@ -15,13 +15,14 @@ return new class extends Migration
             $table->id('membershipId');
             $table->unsignedBigInteger('locationId');
             $table->unsignedBigInteger('sportId');
-            $table->string('name', 25);
+            $table->string('name', 50);
             $table->text('description')->nullable();
-            $table->integer('price');
+            $table->decimal('discount');
             $table->smallInteger('weeks');
             $table->timestamps();
             $table->foreign('locationId')->references('locationId')->on('locations')->onDelete('cascade');
             $table->foreign('sportId')->references('sportId')->on('sports')->onDelete('cascade');
+            $table->softDeletes();
         });
     }
 

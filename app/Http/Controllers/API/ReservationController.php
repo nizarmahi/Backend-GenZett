@@ -14,6 +14,7 @@ use App\Models\HistoryReservationUser;
 use App\Models\User;
 use Illuminate\Support\Facades\Validator;
 use Tymon\JWTAuth\Facades\JWTAuth;
+use Tymon\JWTAuth\Exceptions\JWTException;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
@@ -1257,7 +1258,7 @@ class ReservationController extends Controller
             }
         } catch (\Exception $e) {
             // Log error tapi jangan stop proses
-            \Log::error('Error updating time availability: ' . $e->getMessage());
+            // \Log::error('Error updating time availability: ' . $e->getMessage());
         }
     }
             
@@ -1338,8 +1339,8 @@ class ReservationController extends Controller
                 ];
             });
 
-            \Log::info('locationId: ' . $locationId);
-            \Log::info('search: ' . $search);
+            // \Log::info('locationId: ' . $locationId);
+            // \Log::info('search: ' . $search);
 
             
 
@@ -1503,7 +1504,7 @@ class ReservationController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            \Log::error('Error saat konfirmasi refund: ' . $e->getMessage());
+            // \Log::error('Error saat konfirmasi refund: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Terjadi kesalahan saat mengonfirmasi refund',
@@ -1595,7 +1596,7 @@ class ReservationController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            \Log::error('Error rejecting refund: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
+            // \Log::error('Error rejecting refund: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
             return response()->json([
                 'success' => false,
                 'message' => 'Terjadi kesalahan saat menolak refund',

@@ -181,4 +181,7 @@ class HistoryController extends Controller
         
         return $hasUpcoming ? 'Upcoming' : 'Completed';
     }
+
+
+    
 }

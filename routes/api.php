@@ -114,7 +114,7 @@ Route::group(['prefix' => 'reservations'], function () {
     // Route::get('/user/{userId}/detail', [ReservationController::class, '']);
 });
 Route::group(['prefix' => 'history'], function () {
-    Route::get('/user', [HistoryController::class, 'userReservations']);
+    Route::get('/user', [ReservationController::class, 'userReservations']);
 });
 
 Route::group(['prefix' => 'cancellations'], function () {

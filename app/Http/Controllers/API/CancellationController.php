@@ -125,4 +125,13 @@ class CancellationController extends Controller
             'cancellation' => $cancellation
         ]);
     }
+    public function cancellationDP(Request $request){
+        $reservation = Reservation::find($request->reservationId);
+        $reservation->paymentStatus = 'canceled';
+        $reservation->save();
+        return response()->json([
+            'success' => true,
+            'message' => 'Pembatalan berhasil dibuat',
+        ]);
+    }
 }

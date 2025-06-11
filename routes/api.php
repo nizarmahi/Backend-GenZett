@@ -118,6 +118,7 @@ Route::group(['prefix' => 'history'], function () {
 Route::group(['prefix' => 'cancellations'], function () {
     Route::get('/', [CancellationController::class, 'index']);
     Route::post('/{id}/refund', [CancellationController::class, 'refund']);
+    Route::post('/{id}/dp', [CancellationController::class, 'cancellationDP']);
     Route::post('/refund', [CancellationController::class, 'refundApplication']);
 });
 // Payment API routes

@@ -50,7 +50,7 @@ class ReservationDetailSeeder extends Seeder
                 $details[] = [
                     'reservationId' => $reservationId,
                     'fieldId' => $fieldId,
-                    'timeId' => $startIndex,
+                    'timeId' => $startIndex + $j,
                     'date' => $date->format('Y-m-d'),
                     'created_at' => now(),
                     'updated_at' => now()

@@ -43,7 +43,7 @@ class ReservationController extends Controller
             'details.time',
             'user'
         ])
-            ->where('paymentStatus', '!=', 'closed')
+            ->whereNotIn('paymentStatus', ['closed', 'canceled', 'waiting'])
             ->when($locationId, function ($query) use ($locationId) {
                 $query->whereHas('details.field.location', function ($q) use ($locationId) {
                     $q->where('locationId', $locationId);
@@ -461,10 +461,8 @@ class ReservationController extends Controller
     public function getAllLocations(Request $request)
     {
         try {
-            // Ambil filter dari query string jika ada (misalnya: ?sport=Futsal)
             $sportFilter = $request->query('sport');
 
-            // Ambil data lokasi dengan harga minimum dari times
             $locations = DB::table('locations')
                 ->select(
                     'locations.locationId',
@@ -475,30 +473,38 @@ class ReservationController extends Controller
                 )
                 ->leftJoin('fields', 'locations.locationId', '=', 'fields.locationId')
                 ->leftJoin('times', 'fields.fieldId', '=', 'times.fieldId')
-                ->groupBy('locations.locationId', 'locations.locationName', 'locations.locationPath', 'locations.address');
+                ->whereNull('locations.deleted_at')
+                ->whereNull('fields.deleted_at')
+                ->groupBy(
+                    'locations.locationId',
+                    'locations.locationName',
+                    'locations.locationPath',
+                    'locations.address'
+                );
 
-            // Jika ada filter sport, lakukan join tambahan
             if ($sportFilter) {
                 $locations->join('fields as f', 'locations.locationId', '=', 'f.locationId')
                     ->join('sports', 'f.sportId', '=', 'sports.sportId')
-                    ->where('sports.sportName', $sportFilter);
+                    ->where('sports.sportName', $sportFilter)
+                    ->whereNull('f.deleted_at')
+                    ->whereNull('sports.deleted_at');
             }
 
             $locationResults = $locations->get();
 
             // Format dan ambil data sport untuk setiap lokasi
             $locationsWithSports = $locationResults->map(function ($location) {
-                // Ambil semua sport yang ada di lokasi ini melalui tabel fields
                 $sportsQuery = DB::table('sports')
                     ->select('sports.sportName')
                     ->join('fields', 'sports.sportId', '=', 'fields.sportId')
                     ->where('fields.locationId', $location->locationId)
+                    ->whereNull('fields.deleted_at')
+                    ->whereNull('sports.deleted_at')
                     ->distinct();
 
                 $sportNames = $sportsQuery->pluck('sportName')->toArray();
-                $sportCount = $sportsQuery->count();
+                $sportCount = count($sportNames);
 
-                // Format harga ke format rupiah
                 $formattedPrice = $location->minPrice
                     ? 'Rp ' . number_format($location->minPrice, 0, ',', '.')
                     : 'Rp 0';
@@ -530,6 +536,7 @@ class ReservationController extends Controller
     }
 
 
+
     /**
      * Ambil Semua Olahraga
      *
@@ -543,6 +550,7 @@ class ReservationController extends Controller
             $sports = DB::table('sports')
                 ->select('sportName')
                 ->pluck('sportName')
+                ->whereNull('deleted_at')
                 ->toArray();
 
             return response()->json([
@@ -570,6 +578,7 @@ class ReservationController extends Controller
             $sports = DB::table('fields')
                 ->join('sports', 'fields.sportId', '=', 'sports.sportId')
                 ->where('fields.locationId', $locationId)
+                ->whereNull('sports.deleted_at')
                 ->select('sports.sportId', 'sportName')
                 ->distinct()
                 ->get();

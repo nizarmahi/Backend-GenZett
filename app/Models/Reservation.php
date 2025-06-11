@@ -39,6 +39,6 @@ class Reservation extends Model
     }
     public function cancellation()
     {
-        return $this->hasOne(Cancellation::class, 'reservationId');
+        return $this->hasOne(Cancellation::class, 'reservationId', 'reservationId');
     }
 }

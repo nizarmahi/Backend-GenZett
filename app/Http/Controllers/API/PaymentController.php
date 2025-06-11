@@ -6,9 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Models\Payment;
 use App\Models\Reservation;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Log;
-// Impor yang benar untuk Xendit SDK versi 6.x
 use Xendit\Configuration;
 use Xendit\Invoice\InvoiceApi;
 
@@ -111,6 +111,34 @@ class PaymentController extends Controller
                 'success_redirect_url' => 'https://resports.web.id/history',
                 // 'success_redirect_url' => 'http://localhost:3000/history',
                 'failure_redirect_url' => 'https://resports.web.id/reservation'
+            ]);
+
+            // Logging sebelum request
+            Log::info('Mengirim data ke POS:', [
+                'endpoint' => 'http://20.189.122.35/api/transaction',
+                'payload' => [
+                    'user_id' => 1,
+                    'branch_id' => 1,
+                    'category_id' => 1,
+                    'amount' => $totalPaid,
+                    'description' => 'Pemasukan dari reservasi ID #' . $id,
+                    'transaction_date' => now()->format('Y-m-d')
+                ]
+            ]);
+
+            $response = Http::post('http://20.189.122.35/api/pos/transaction', [
+                'user_id' => 21,
+                'branch_id' => 4,
+                'category_id' => 3,
+                'amount' => $totalPaid,
+                'description' => 'Pemasukan dari reservasi ID #' . $id,
+                'transaction_date' => now()->format('Y-m-d')
+            ]);
+
+            // Logging setelah request
+            Log::info('Respons dari POS:', [
+                'status' => $response->status(),
+                'body' => $response->body()
             ]);
 
             return response()->json([
@@ -221,34 +249,6 @@ class PaymentController extends Controller
      *
      * @param \Illuminate\Http\Request $request
      */
-    // public function handleWebhook(Request $request)
-    // {
-    //     $data = $request->all();
-
-    //     // Validasi data masuk (optional, bisa pakai signature juga)
-    //     if (!isset($data['id']) || !isset($data['status'])) {
-    //         return response()->json(['message' => 'Invalid payload'], 400);
-    //     }
-
-    //     $payment = Payment::where('xendit_invoice_id', $data['id'])->firstOrFail();
-
-    //     if (!$payment) {
-    //         return response()->json(['message' => 'Payment not found'], 404);
-    //     }
-
-    //     $payment->update([
-    //         'xendit_status' => $data['status'],
-    //     ]);
-
-    //     // Jika invoice sudah dibayar, update juga status di tabel reservation
-    //     if ($data['status'] === 'PAID') {
-    //         $payment->reservation->update([
-    //             'paymentStatus' => 'PAID'
-    //         ]);
-    //     }
-
-    //     return response()->json(['message' => 'Webhook received'], 200);
-    // }
     public function handleWebhook(Request $request)
     {
         $invoiceId = $request->input('id');

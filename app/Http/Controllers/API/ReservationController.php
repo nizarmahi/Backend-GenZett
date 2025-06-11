@@ -230,7 +230,6 @@ class ReservationController extends Controller
 
         if ($request->paymentType === 'membership' && $request->membershipId) {
             $membership = Membership::find($request->membershipId);
-            // Ambil locationId & sportId dari lapangan yang dipesan
             $fieldIds = collect($request->details)->pluck('fieldId')->unique();
             $fields = Field::whereIn('fieldId', $fieldIds)->get(['fieldId', 'locationId', 'sportId']);
 

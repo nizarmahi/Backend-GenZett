@@ -3,42 +3,58 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
+use App\Models\Reservation;
 use Illuminate\Http\Request;
 
 class HistoryController extends Controller
 {
-        public function userReservations(Request $request)
+    public function userReservations(Request $request, $id)
     {
-        $userId = $request->query('user_id');
+        $page = (int) $request->input('page', 1);
+        $limit = (int) $request->input('limit', 10);
+        $search = $request->input('search');
 
-        if (!$userId) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Parameter user_id wajib diisi.',
-                'data' => []
-            ], 400);
-        }
+        $query = Reservation::with([
+            'details.field.location',
+            'details.field.sport',
+            'details.time',
+            // 'user'
+        ])
+            ->where('userId', $id)
+            ->when($search, function ($query) use ($search) {
+                $query->where('name', 'like', '%' . $search . '%');
+            })
+            ->orderByDesc('created_at');
 
-        // Ambil semua reservasi dengan relasi user dan details
-        $reservations = Reservation::with(['details', 'user'])
-            ->where('userId', $userId)
-            ->get();
-
-        // Ambil 1 data user dari salah satu reservasi (karena user-nya pasti sama)
-        $user = $reservations->first()?->user;
-
-        // Hilangkan properti 'user' dari setiap item dalam data
-        $cleanedReservations = $reservations->map(function ($reservation) {
-            $res = $reservation->toArray();
-            unset($res['user']);
-            return $res;
-        });
+        $reservations = $query->paginate($limit, ['*'], 'page', $page);
 
         return response()->json([
             'success' => true,
-            'message' => 'User reservations retrieved successfully',
-            'user' => $user,
-            'data' => $cleanedReservations
+            'message' => 'Semua reservasi berhasil diambil',
+            'data' => $reservations->map(function ($reservation) {
+                return [
+                    'reservationId' => $reservation->reservationId,
+                    'userId' => $reservation->userId,
+                    'locationName' => $reservation->details->first()?->field->location->locationName,
+                    'name' => $reservation->name,
+                    'paymentStatus' => $reservation->paymentStatus,
+                    'paymentType' => $reservation->paymentType,
+                    'total' => $reservation->total,
+                    'created_at' => $reservation->created_at,
+                    'status' => 'upcoming',
+                    // 'updated_at' => $reservation->updated_at,
+                    'details' => $reservation->details->map(function ($detail) {
+                        return [
+                            // 'detailId' => $detail->detailId,
+                            // 'reservationId' => $detail->reservationId,
+                            'fieldName' => $detail->field->name,
+                            'time' => $detail->time,
+                            'date' => $detail->date,
+                            // 'status' => $detail->status,
+                        ];
+                    })
+                ];
+            })
         ]);
     }
 }

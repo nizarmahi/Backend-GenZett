@@ -13,10 +13,10 @@ class ReservationDetailSeeder extends Seeder
         $details = [];
 
         $months = [
-            ['start' => '2025-02-01', 'end' => '2025-02-28'],
             ['start' => '2025-03-01', 'end' => '2025-03-31'],
             ['start' => '2025-04-01', 'end' => '2025-04-30'],
             ['start' => '2025-05-01', 'end' => '2025-05-31'],
+            ['start' => '2025-06-01', 'end' => '2025-06-19'],
         ];
 
         for ($reservationId = 1; $reservationId <= 50; $reservationId++) {
@@ -33,13 +33,24 @@ class ReservationDetailSeeder extends Seeder
             // Field and time slots (1-3 consecutive slots)
             $fieldId = rand(1, 10);
             $timeSlotCount = rand(1, 3);
-            $firstTimeId = rand(1, 15 - $timeSlotCount); // Assuming 15 time slots
+            $availableTimes = DB::table('times')
+                ->where('status', 'available')
+                ->where('fieldId', $fieldId)
+                ->pluck('timeId')
+                ->toArray();
+
+            $maxIndex = count($availableTimes) - $timeSlotCount;
+            if ($maxIndex < 0) {
+                continue;
+            }
+
+            $startIndex = $availableTimes[rand(0, $maxIndex)];
 
             for ($j = 0; $j < $timeSlotCount; $j++) {
                 $details[] = [
                     'reservationId' => $reservationId,
                     'fieldId' => $fieldId,
-                    'timeId' => $firstTimeId + $j,
+                    'timeId' => $startIndex + $j,
                     'date' => $date->format('Y-m-d'),
                     'created_at' => now(),
                     'updated_at' => now()

@@ -650,8 +650,10 @@ class ReservationController extends Controller
                 ->where('sportId', $sportId)
                 ->get();
             $existingReservations = DB::table('reservation_details')
+                ->join('reservations', 'reservations.reservationId', '=', 'reservation_details.reservationId')
                 ->whereIn('fieldId', $fields->pluck('fieldId'))
                 ->whereIn('date', $dates)
+                ->whereNotIn('reservations.paymentStatus', ['canceled', 'waiting', 'fail'])
                 ->get()
                 ->groupBy(['date', 'fieldId', 'timeId']);
 

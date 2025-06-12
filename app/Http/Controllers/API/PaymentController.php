@@ -253,11 +253,12 @@ class PaymentController extends Controller
     {
         $invoiceId = $request->input('id');
         $invoice = $this->invoiceApi->getInvoiceById($invoiceId);
+
         $payment = Payment::where('xendit_invoice_id', $invoice->getId())->first();
         if (!$payment) {
             return response()->json(['message' => 'Payment not found'], 404);
         }
-        // validasi status invoice apakah sudah SETTLED
+        // Validasi status invoice apakah sudah SETTLED
         if ($invoice->getStatus() == 'SETTLED') {
             return response()->json(['message' => 'Invoice already settled'], 400);
         }
@@ -267,10 +268,13 @@ class PaymentController extends Controller
         ]);
         // Jika invoice sudah dibayar, update juga status di tabel reservation
         if ($invoice->getStatus() === 'PAID') {
-            $payment->reservation->update([
-                'paymentStatus' => 'complete'
-            ]);
+            if ($payment->reservation->paymentStatus !== 'dp') {
+                $payment->reservation->update([
+                    'paymentStatus' => 'complete'
+                ]);
+            }
         }
+
         return response()->json(['message' => 'Webhook received'], 200);
     }
 }

@@ -94,7 +94,9 @@ class PaymentController extends Controller
                 'payment_methods' => ['QRIS'],
                 'success_redirect_url' => 'https://resports.web.id/history',
                 // 'success_redirect_url' => 'http://localhost:3000/history',
-                'failure_redirect_url' => 'https://resports.web.id/reservation'
+                'failure_redirect_url' => 'https://resports.web.id/reservation',
+                'invoice_duration' => 900
+
             ];
 
             $xenditInvoice = $this->invoiceApi->createInvoice($createInvoiceRequest);
@@ -110,7 +112,8 @@ class PaymentController extends Controller
                 'payment_methods' => ['QRIS'],
                 'success_redirect_url' => 'https://resports.web.id/history',
                 // 'success_redirect_url' => 'http://localhost:3000/history',
-                'failure_redirect_url' => 'https://resports.web.id/reservation'
+                'failure_redirect_url' => 'https://resports.web.id/reservation',
+                'invoice_duration' => 900
             ]);
 
             // Logging sebelum request

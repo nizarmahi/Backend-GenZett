@@ -3,185 +3,80 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
-use App\Models\Payment;
 use App\Models\Reservation;
-use App\Models\ReservationDetail;
-use Carbon\Carbon;
-use Illuminate\Http\JsonResponse;
+use App\Models\Location;
 use Illuminate\Http\Request;
+use Carbon\Carbon;
 
 class HistoryController extends Controller
 {
-    public function index(Request $request): JsonResponse
+    public function userReservations(Request $request, $id)
     {
-        try {
-            $search = $request->input('search', '');
-            $perPage = $request->input('per_page', 5);
-            $page = $request->input('page', 1);
-            $sortField = $request->input('sort_field', 'paymentId');
-            $sortDirection = $request->input('sort_direction', 'asc');
-            $statusFilter = $request->input('status');
-            $paymentFilter = $request->input('payment');
+        $page = (int) $request->input('page', 1);
+        $limit = (int) $request->input('limit', 10);
+        $search = $request->input('search');
+        $location = $request->input('location'); 
+        $paymentStatus = $request->input('paymentStatus'); 
+        $paymentType = $request->input('paymentType'); 
 
-            $query = Payment::with([
-                'reservation.details.field.location',
-                'reservation.details.time'
-            ]);
+        $locationIds = [];
+        if ($location) {
+            $locationIds = Location::where('locationName', 'like', '%' . $location . '%')->pluck('locationId')->toArray();
+        }
+        
+        $query = Reservation::with([
+            'details.field.location',
+            'details.field.sport',
+            'details.time',
+        ])
+            ->where('userId', $id)
+            ->when($search, function ($query) use ($search) {
+                $query->where('name', 'like', '%' . $search . '%');
+            })
+            ->when(!empty($locationIds), function ($query) use ($locationIds) {
+                $query->whereHas('details.field', function ($q) use ($locationIds) {
+                    $q->whereIn('locationId', $locationIds);
+                });
+            })
+            ->when($paymentStatus, function ($query) use ($paymentStatus) {
+                $query->where('paymentStatus', $paymentStatus);
+            })
+            ->when($paymentType, function ($query) use ($paymentType) {
+                $query->where('paymentType', $paymentType);
+            })
+            ->orderByDesc('created_at');
 
-            // Filter pencarian
-            if ($search) {
-                $query->where(function($q) use ($search) {
-                    $q->where('paymentId', 'like', "%$search%")
-                    ->orWhereHas('reservation', function($q) use ($search) {
-                        $q->where('name', 'like', "%$search%");
+        $reservations = $query->paginate($limit, ['*'], 'page', $page);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Semua reservasi berhasil diambil',
+            'data' => $reservations->map(function ($reservation) {
+                return [
+                    'reservationId' => $reservation->reservationId,
+                    'userId' => $reservation->userId,
+                    'locationName' => $reservation->details->first()?->field->location->locationName,
+                    'name' => $reservation->name,
+                    'paymentStatus' => $reservation->paymentStatus,
+                    'paymentType' => $reservation->paymentType,
+                    'total' => $reservation->total,
+                    'created_at' => $reservation->created_at,
+                    'status' => 'upcoming',
+                    'details' => $reservation->details->map(function ($detail) {
+                        return [
+                            'fieldName' => $detail->field->name,
+                            'time' => $detail->time,
+                            'date' => $detail->date,
+                        ];
                     })
-                    ->orWhereHas('reservation.details.field.location', function($q) use ($search) {
-                        $q->where('locationName', 'like', "%$search%");
-                    })
-                    ->orWhereHas('reservation.details.field', function($q) use ($search) {
-                        $q->where('name', 'like', "%$search%");
-                    });
-                });
-            }
-
-            // Filter status
-            if ($statusFilter) {
-                $query->whereHas('reservation.details', function($q) use ($statusFilter) {
-                    $this->applyStatusFilter($q, $statusFilter);
-                });
-            }
-
-            // Filter pembayaran
-            if ($paymentFilter) {
-                $query->whereHas('reservation', function($q) use ($paymentFilter) {
-                    $q->where('paymentStatus', $paymentFilter);
-                });
-            }
-
-            // Sorting
-            $validSortFields = ['paymentId', 'totalPaid', 'date'];
-            if (in_array($sortField, $validSortFields)) {
-                if ($sortField === 'date') {
-                    $query->join('reservation_details', 'payments.reservationId', '=', 'reservation_details.reservationId')
-                        ->orderBy('reservation_details.date', $sortDirection);
-                } else {
-                    $query->orderBy($sortField, $sortDirection);
-                }
-            }
-
-            $payments = $query->paginate($perPage, ['*'], 'page', $page);
-
-            // Pagination
-            $payments = $query->paginate($perPage, ['*'], 'page', $page);
-
-            // Transform data
-            $transformedData = $payments->getCollection()->map(function ($payment) {
-                return $this->transformHistory($payment);
-            });
-
-            return response()->json([
-                'success' => true,
-                'data' => $transformedData,
-                'pagination' => [
-                    'total' => $payments->total(),
-                    'per_page' => $payments->perPage(),
-                    'current_page' => $payments->currentPage(),
-                    'last_page' => $payments->lastPage(),
-                ],
-                'message' => 'Histories retrieved successfully'
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to retrieve histories',
-                'error' => $e->getMessage()
-            ], 500);
-        }
+                ];
+            }),
+            'meta' => [
+                'current_page' => $reservations->currentPage(),
+                'last_page' => $reservations->lastPage(),
+                'per_page' => $reservations->perPage(),
+                'total' => $reservations->total(),
+            ],
+        ]);
     }
-
-    private function applyStatusFilter($query, $status)
-    {
-        $now = Carbon::now();
-        
-        if ($status === 'Upcoming') {
-            $query->where('date', '>', $now->format('Y-m-d'))
-                  ->orWhere(function($q) use ($now) {
-                      $q->whereDate('date', $now->format('Y-m-d'))
-                        ->whereHas('time', function($q) use ($now) {
-                            $q->where('start_time', '>', $now->format('H:i:s'));
-                        });
-                  });
-        } elseif ($status === 'Ongoing') {
-            $query->whereDate('date', $now->format('Y-m-d'))
-                  ->whereHas('time', function($q) use ($now) {
-                      $q->where('start_time', '<=', $now->format('H:i:s'))
-                        ->where('end_time', '>=', $now->format('H:i:s'));
-                  });
-        } elseif ($status === 'Completed') {
-            $query->where('date', '<', $now->format('Y-m-d'))
-                  ->orWhere(function($q) use ($now) {
-                      $q->whereDate('date', $now->format('Y-m-d'))
-                        ->whereHas('time', function($q) use ($now) {
-                            $q->where('end_time', '<', $now->format('H:i:s'));
-                        });
-                  });
-        }
-    }
-
-    private function transformHistory($payment): array
-    {
-        $reservation = $payment->reservation;
-        $reservationDetails = $reservation->details;
-        
-        $fieldNames = $reservationDetails->map(function ($detail) {
-            return $detail->field->name;
-        })->unique()->implode(', ');
-
-        $locationName = $reservationDetails->first()->field->location->locationName ?? 'Unknown Location';
-        $date = $reservationDetails->first()->date ?? null;
-        $status = $this->determineStatus($reservationDetails);
-
-        return [
-            'id' => '#' . $payment->paymentId,
-            'branch' => $locationName,
-            'name' => $reservation->name,
-            'court' => $fieldNames,
-            'date' => $date ? Carbon::parse($date)->format('d/m/Y') : null,
-            'total' => 'Rp. ' . number_format($payment->totalPaid, 0, ',', '.'),
-            'payment' => $reservation->paymentStatus,
-            'status' => $status
-        ];
-    }
-
-    private function determineStatus($reservationDetails): string
-    {
-        $now = Carbon::now();
-        $hasUpcoming = false;
-        
-        foreach ($reservationDetails as $detail) {
-            $date = Carbon::parse($detail->date);
-            $time = $detail->time;
-            
-            if (!$time) continue;
-            
-            $startTime = Carbon::parse($time->start_time);
-            $endTime = Carbon::parse($time->end_time);
-            
-            $startDateTime = $date->copy()->setTime($startTime->hour, $startTime->minute, $startTime->second);
-            $endDateTime = $date->copy()->setTime($endTime->hour, $endTime->minute, $endTime->second);
-            
-            if ($now->between($startDateTime, $endDateTime)) {
-                return 'Ongoing';
-            }
-            
-            if ($now->lt($startDateTime)) {
-                $hasUpcoming = true;
-            }
-        }
-        
-        return $hasUpcoming ? 'Upcoming' : 'Completed';
-    }
-
-
-    
 }

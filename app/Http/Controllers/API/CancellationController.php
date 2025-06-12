@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
+use App\Models\Cancellation;
 use App\Models\Reservation;
 use Illuminate\Http\Request;
 
@@ -106,5 +107,31 @@ class CancellationController extends Controller
                 'message' => 'Terjadi kesalahan: ' . $e->getMessage()
             ], 500);
         }
+    }
+    public function refundApplication(Request $request){
+        $reservation = Reservation::find($request->reservationId);
+        $cancellation = Cancellation::create([
+            'reservationId' => $reservation->reservationId,
+            'accountName' => $request->accountName,
+            'accountNumber' => $request->accountNumber,
+            'paymentPlatform' => $request->paymentPlatform,
+            'reason' => $request->reason,
+        ]);
+        $reservation->paymentStatus = 'waiting';
+        $reservation->save();
+        return response()->json([
+            'success' => true,
+            'message' => 'Pembatalan berhasil dibuat',
+            'cancellation' => $cancellation
+        ]);
+    }
+    public function cancellationDP(Request $request){
+        $reservation = Reservation::find($request->reservationId);
+        $reservation->paymentStatus = 'canceled';
+        $reservation->save();
+        return response()->json([
+            'success' => true,
+            'message' => 'Pembatalan berhasil dibuat',
+        ]);
     }
 }

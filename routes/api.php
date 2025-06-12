@@ -114,12 +114,14 @@ Route::group(['prefix' => 'reservations'], function () {
     // Route::get('/user/{userId}/detail', [ReservationController::class, '']);
 });
 Route::group(['prefix' => 'history'], function () {
-    Route::get('/user', [ReservationController::class, 'userReservations']);
+    Route::get('/user/{id}', [HistoryController::class, 'userReservations']);
 });
 
 Route::group(['prefix' => 'cancellations'], function () {
     Route::get('/', [CancellationController::class, 'index']);
     Route::post('/{id}/refund', [CancellationController::class, 'refund']);
+    Route::post('/{id}/dp', [CancellationController::class, 'cancellationDP']);
+    Route::post('/refund', [CancellationController::class, 'refundApplication']);
 });
 // Payment API routes
 Route::group(['prefix' => 'payments'], function () {

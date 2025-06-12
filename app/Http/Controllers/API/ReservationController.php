@@ -258,8 +258,10 @@ class ReservationController extends Controller
         foreach ($details as $detail) {
             foreach ($detail['timeIds'] as $timeId) {
                 $existingReservation = ReservationDetail::where('fieldId', $detail['fieldId'])
+                    ->join('reservations', 'reservations.reservationId', '=', 'reservation_details.reservationId')
                     ->where('timeId', $timeId)
                     ->where('date', $detail['date'])
+                    ->whereNotIn('reservations.paymentStatus', ['canceled', 'waiting', 'fail'])
                     ->exists();
 
                 if ($existingReservation) {

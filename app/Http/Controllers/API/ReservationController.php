@@ -215,7 +215,7 @@ class ReservationController extends Controller
             'details.*.timeIds.*' => 'required|exists:times,timeId',
             'details.*.date' => 'required|date',
             'name' => 'sometimes|string|max:255',
-            'paymentStatus' => 'sometimes|string|in:pending,paid,cancelled',
+            'paymentStatus' => 'sometimes|string|in:pending,paid,canceled,dp',
             'paymentType' => 'sometimes|string|in:reguler,membership',
             'total' => 'sometimes|numeric|min:0',
         ]);
@@ -249,7 +249,6 @@ class ReservationController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Membership belum dipilih.',
-                'invalidField' => $field,
             ], 422);
         }
 
@@ -258,7 +257,6 @@ class ReservationController extends Controller
         $conflicts = [];
         foreach ($details as $detail) {
             foreach ($detail['timeIds'] as $timeId) {
-                // Cek apakah sudah ada reservasi dengan fieldId, timeId, dan date yang sama
                 $existingReservation = ReservationDetail::where('fieldId', $detail['fieldId'])
                     ->where('timeId', $timeId)
                     ->where('date', $detail['date'])
@@ -315,6 +313,7 @@ class ReservationController extends Controller
             'reservation' => $reservation->load('details.field', 'details.time', 'membership')
         ], 201);
     }
+
 
     /**
      * Detail Reservasi
@@ -853,5 +852,4 @@ class ReservationController extends Controller
             ], 500);
         }
     }
-
 }

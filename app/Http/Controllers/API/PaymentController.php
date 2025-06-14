@@ -117,32 +117,32 @@ class PaymentController extends Controller
             ]);
 
             // Logging sebelum request
-            Log::info('Mengirim data ke POS:', [
-                'endpoint' => 'http://20.189.122.35/api/transaction',
-                'payload' => [
-                    'user_id' => 1,
-                    'branch_id' => 1,
-                    'category_id' => 1,
-                    'amount' => $totalPaid,
-                    'description' => 'Pemasukan dari reservasi ID #' . $id,
-                    'transaction_date' => now()->format('Y-m-d')
-                ]
-            ]);
+            // Log::info('Mengirim data ke POS:', [
+            //     'endpoint' => 'http://20.189.122.35/api/transaction',
+            //     'payload' => [
+            //         'user_id' => 1,
+            //         'branch_id' => 1,
+            //         'category_id' => 1,
+            //         'amount' => $totalPaid,
+            //         'description' => 'Pemasukan dari reservasi ID #' . $id,
+            //         'transaction_date' => now()->format('Y-m-d')
+            //     ]
+            // ]);
 
-            $response = Http::post('http://20.189.122.35/api/pos/transaction', [
-                'user_id' => 21,
-                'branch_id' => 4,
-                'category_id' => 3,
-                'amount' => $totalPaid,
-                'description' => 'Pemasukan dari reservasi ID #' . $id,
-                'transaction_date' => now()->format('Y-m-d')
-            ]);
+            // $response = Http::post('http://20.189.122.35/api/pos/transaction', [
+            //     'user_id' => 21,
+            //     'branch_id' => 4,
+            //     'category_id' => 3,
+            //     'amount' => $totalPaid,
+            //     'description' => 'Pemasukan dari reservasi ID #' . $id,
+            //     'transaction_date' => now()->format('Y-m-d')
+            // ]);
 
             // Logging setelah request
-            Log::info('Respons dari POS:', [
-                'status' => $response->status(),
-                'body' => $response->body()
-            ]);
+            // Log::info('Respons dari POS:', [
+            //     'status' => $response->status(),
+            //     'body' => $response->body()
+            // ]);
 
             return response()->json([
                 'success' => true,

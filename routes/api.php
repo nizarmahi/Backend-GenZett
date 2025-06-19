@@ -133,6 +133,7 @@ Route::group(['prefix' => 'payments'], function () {
     Route::put('/{id}', [PaymentController::class, 'update']);
     Route::delete('/{id}', [PaymentController::class, 'destroy']);
     Route::post('/webhook', [PaymentController::class, 'handleWebhook']);
+    Route::post('/payment/failed', [PaymentController::class, 'handleFailedPayment']);
 });
 // Membership API routes
 Route::group(['prefix' => 'memberships'], function () {

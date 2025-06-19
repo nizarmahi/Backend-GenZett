@@ -112,8 +112,8 @@ class PaymentController extends Controller
                 'payment_methods' => ['QRIS'],
                 'success_redirect_url' => 'https://resports.web.id/history',
                 // 'success_redirect_url' => 'http://localhost:3000/history',
-                'failure_redirect_url' => 'https://resports.web.id/reservation',
-                'invoice_duration' => 900
+                'failure_redirect_url' => 'https://resports.web.id/api/payment/failed?reservationId=' . $id,
+                'invoice_duration' => 60
             ]);
 
             // Logging sebelum request
@@ -279,5 +279,36 @@ class PaymentController extends Controller
         }
 
         return response()->json(['message' => 'Webhook received'], 200);
+    }
+    /**
+     * Handle failed payment
+     *
+     * @param \Illuminate\Http\Request $request
+     */
+    public function handleFailedPayment(Request $request)
+    {
+        try {
+            $reservationId = $request->query('reservationId');
+
+            // Update status reservasi menjadi cancel
+            $reservation = Reservation::find($reservationId);
+            if ($reservation) {
+                $reservation->paymentStatus = 'canceled';
+                $reservation->save();
+            }
+
+            // Anda juga bisa update status payment jika perlu
+            $payment = Payment::where('reservationId', $reservationId)->first();
+            if ($payment) {
+                $payment->xendit_status = 'EXPIRED';
+                $payment->save();
+            }
+
+            // Redirect ke halaman yang sesuai
+            return redirect('https://resports.web.id/payments');
+        } catch (\Exception $e) {
+            Log::error('Gagal menangani pembayaran yang gagal: ' . $e->getMessage());
+            return redirect('https://resports.web.id/payments');
+        }
     }
 }

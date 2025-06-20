@@ -2,19 +2,27 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Laravel\Sanctum\HasApiTokens;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Tymon\JWTAuth\Contracts\JWTSubject;
 
-class User extends Authenticatable
+class User extends Authenticatable implements JWTSubject, MustVerifyEmail
 {
-    use HasApiTokens, HasFactory, Notifiable;
+    use HasFactory, Notifiable, SoftDeletes;
 
     protected $primaryKey = 'userId';
+    public $incrementing = true;
+    protected $keyType = 'int';
 
     protected $fillable = [
-        'username', 'name', 'email', 'phone', 'password', 'role'
+        'name',
+        'email',
+        'phone',
+        'password',
+        'role',
     ];
 
     protected $hidden = [
@@ -22,14 +30,30 @@ class User extends Authenticatable
         'remember_token',
     ];
 
+    public function getJWTIdentifier()
+    {
+        return $this->getKey();
+    }
+
+    public function getJWTCustomClaims()
+    {
+        return [];
+    }
+
+    public function scopeSearch($query, $term)
+    {
+        $term = "%{$term}%";
+
+        return $query->where(function ($q) use ($term) {
+            $q->where('name', 'like', $term)
+                ->orWhere('email', 'like', $term)
+                ->orWhere('phone', 'like', $term);
+        });
+    }
+
     public function reservations()
     {
         return $this->hasMany(Reservation::class, 'userId');
-    }
-
-    public function member()
-    {
-        return $this->hasOne(Membership::class, 'userId');
     }
 
     public function admin()

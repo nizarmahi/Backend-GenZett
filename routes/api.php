@@ -124,6 +124,7 @@ Route::group(['prefix' => 'cancellations'], function () {
 // Payment API routes
 Route::group(['prefix' => 'payments'], function () {
     Route::post('/webhook', [PaymentController::class, 'webhook']);
+    Route::get('/failed', [PaymentController::class, 'handleFailedPayment']);
     Route::put('/{id}/status', [PaymentController::class, 'updatePaymentStatus']);
     Route::get('/{id}/status', [PaymentController::class, 'getPaymentStatus']);
 

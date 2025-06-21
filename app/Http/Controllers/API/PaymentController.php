@@ -94,7 +94,7 @@ class PaymentController extends Controller
                 'payment_methods' => ['QRIS'],
                 'success_redirect_url' => 'https://resports.web.id/history',
                 // 'success_redirect_url' => 'http://localhost:3000/history',
-                'failure_redirect_url' => 'https://resports.web.id/reservation',
+                'failure_redirect_url' => 'https://resports.web.id/api/payments/failed?reservationId=' . $id,
                 'invoice_duration' => 900
 
             ];
@@ -112,7 +112,7 @@ class PaymentController extends Controller
                 'payment_methods' => ['QRIS'],
                 'success_redirect_url' => 'https://resports.web.id/history',
                 // 'success_redirect_url' => 'http://localhost:3000/history',
-                'failure_redirect_url' => 'https://resports.web.id/reservation',
+                'failure_redirect_url' => 'https://resports.web.id/api/payments/failed?reservationId=' . $id,
                 'invoice_duration' => 900
             ]);
 
@@ -279,5 +279,40 @@ class PaymentController extends Controller
         }
 
         return response()->json(['message' => 'Webhook received'], 200);
+    }
+    /**
+     * Handle failed payment
+     *
+     * @param \Illuminate\Http\Request $request
+     */
+    public function handleFailedPayment(Request $request)
+    {
+        try {
+            $reservationId = $request->reservationId;
+            // Update status reservasi menjadi cancel
+            $reservation = Reservation::find($reservationId);
+            if ($reservation) {
+                $reservation->paymentStatus = 'canceled';
+                $reservation->save();
+            }
+
+            // Anda juga bisa update status payment jika perlu
+            $payment = Payment::where('reservationId', $reservationId)->first();
+            if ($payment) {
+                $payment->xendit_status = 'EXPIRED';
+                $payment->save();
+            }
+
+            return redirect('https://resports.web.id/history/');
+            // return redirect('http://localhost:3000/history');
+            // return response()->json([
+            //     'success' => true,
+            //     'message' => 'Pembayaran gagal, reservasi telah dibatalkan',
+            //     'reservationId' => $reservationId
+            // ]);
+        } catch (\Exception $e) {
+            Log::error('Gagal menangani pembayaran yang gagal: ' . $e->getMessage());
+            return redirect('https://resports.web.id/history/');
+        }
     }
 }

@@ -10,8 +10,13 @@ use App\Models\Field;
 use App\Models\Membership;
 use App\Models\Payment;
 use App\Models\Time;
+use App\Models\HistoryReservationUser;
+use App\Models\User;
 use Illuminate\Support\Facades\Validator;
+use Tymon\JWTAuth\Facades\JWTAuth;
+use Tymon\JWTAuth\Exceptions\JWTException;
 use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 
 /**
  * @group Reservation Management

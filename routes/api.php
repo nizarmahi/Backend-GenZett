@@ -22,6 +22,7 @@ use App\Http\Controllers\API\SuperAdmin\DashboardController;
 use App\Http\Controllers\API\Admin\AdminDashboardController;
 use App\Http\Controllers\API\CancellationController;
 
+
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -93,6 +94,7 @@ Route::group(['prefix' => 'fields'], function () {
     Route::get('/availableTimes/{fieldId}', [FieldController::class, 'getAvailableTimes']);
     Route::get('/getPrice/{id}', [FieldController::class, 'getPrice']);
 });
+
 Route::group(['prefix' => 'reservations'], function () {
     Route::get('/location', [ReservationController::class, 'getAllLocations']);
     Route::get('/sport', [ReservationController::class, 'getSports']);
@@ -179,4 +181,6 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::middleware('admin')->group(function () {
     });
+
+    Route::get('/histories', [HistoryController::class, 'index']);
 });
